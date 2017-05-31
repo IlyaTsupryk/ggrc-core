@@ -162,8 +162,9 @@ dashboard-js-files:
   - components/assessment/attachments-list.js
   - components/assessment/custom-attributes.js
   - components/assessment/inline.js
-  - components/assessment/add_comment.js
+  - components/comment/comment-add-form.js
   - components/comment/comment-input.js
+  - components/comment/comment-add-button.js
   - components/assessment/controls-toolbar/controls-toolbar.js
   - components/object-list-item/business-object-list-item.js
   - components/object-list-item/person-list-item.js
@@ -334,8 +335,7 @@ dashboard-js-template-files:
   - components/assessment/inline/date.mustache
   - components/assessment/inline/person.mustache
   - components/assessment/inline/checkbox.mustache
-  - components/assessment/add_comment.mustache
-  - components/assessment/comment/controls.mustache
+  - components/comment/comment-add-form.mustache
   - components/comment/comment-input.mustache
   - components/object-list/object-list.mustache
   - components/object-popover/object-popover.mustache

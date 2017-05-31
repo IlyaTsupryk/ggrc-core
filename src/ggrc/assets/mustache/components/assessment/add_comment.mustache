@@ -1,9 +1,0 @@
-{{!
-    Copyright (C) 2017 Google Inc.
-    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
-}}
-
-<comment-input {(value)}="comment.value" {clean}="clean" {^is-empty}="isEmpty" {disabled}="isSaving"></comment-input>
-{{#if state.controls}}
-  {{> '/static/mustache/components/assessment/comment/controls.mustache' }}
-{{/if}}
