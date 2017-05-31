@@ -1,0 +1,27 @@
+/*
+ * Copyright (C) 2017 Google Inc.
+ * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+ */
+.comment-add-form {
+  display: block;
+
+  &__section {
+    margin: 0 0 16px;
+  }
+
+  &__toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .comment-add-form__toolbar-checkbox {
+    margin: 0 8px 0 0;
+  }
+
+  &__toolbar-label {
+    font-size: 13px;
+    min-height: 28px;
+    line-height: 28px;
+  }
+}
