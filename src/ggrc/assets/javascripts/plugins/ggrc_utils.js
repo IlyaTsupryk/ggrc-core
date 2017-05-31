@@ -5,6 +5,13 @@
 
 (function ($, GGRC, moment, Permission) {
   'use strict';
+  var ROLE_TYPES = {
+    related_creators: 'creator',
+    related_verifiers: 'verifier',
+    related_assignees: 'assignee',
+    related_requesters: 'requester',
+    related_assessors: 'assessor'
+  };
   /**
    * A module containing various utility functions.
    */
@@ -187,7 +194,6 @@
       window.webkitRequestFileSystem(
         window.TEMPORARY, text.length, fileSystemObtained, errorHandler);
     },
-
     loadScript: function (url, callback) {
       var script = document.createElement('script');
       script.type = 'text/javascript';
@@ -513,6 +519,31 @@
           .value();
 
       return peopleIds;
+    },
+    getAssigneeType: function (instance) {
+      var user = GGRC.current_user;
+      var userType = null;
+
+      if (!instance || !user) {
+        return;
+      }
+      _.each(ROLE_TYPES, function (type, mapping) {
+        var mappings = instance.get_mapping(mapping);
+        var isMapping;
+        if (!mappings.length) {
+          return;
+        }
+
+        isMapping = _.filter(mappings, function (mapping) {
+          return mapping.instance.id === user.id;
+        }).length;
+
+        if (isMapping) {
+          type = can.capitalize(type);
+          userType = userType ? userType + ',' + type : type;
+        }
+      });
+      return userType;
     }
   };
 
