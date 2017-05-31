@@ -44,15 +44,20 @@
                                     {^fields-to-save-available}="formState.fieldsToSaveAvailable"
                                     {^saving}="formState.saving"
                                     {^all-saved}="formState.allSaved"
+                                    {^form-saved-deferred}="formState.formSavedDeferred"
                                     {^is-dirty}="formState.isDirty"
                                     {^has-validation-errors}="instance.hasValidationErrors"
                                     {evidence-amount}="instance.documents.length"
                                     (validation-changed)="showRequiredInfoModal(%event)"
                     ></auto-save-form>
                   <!-- Modal Window to fix validation issues of CA fields -->
-                    <simple-modal {(state)}="modal.state" {modal-title}="modal.modalTitle" {instance}="instance">
-                        <ca-object-modal-content {(content)}="modal.content" {(state)}="state"
-                                                 {ca-ids}="modal.caIds"></ca-object-modal-content>
+                    <simple-modal {(state)}="modal.state" {modal-title}="modal.modalTitle" {instance}="instance" {formState}="formState">
+                        <ca-object-modal-content {instance}="instance"
+                                                 {(content)}="modal.content"
+                                                 {(state)}="state"
+                                                 {ca-ids}="modal.caIds"
+                                                 {form-saved-deferred}="formState.formSavedDeferred"
+                        ></ca-object-modal-content>
                     </simple-modal>
                   <!-- End of Modal Window -->
                     <assessment-controls-toolbar class="assessment-controls-toolbar"
@@ -72,8 +77,9 @@
                 <div class="section-title">Responses/Comments</div>
               {{^if_in instance.status 'Completed,Final'}}
                 {{#is_allowed 'update' instance context='for'}}
-                    <assessment-add-comment class="assessment-comments-add"
-                                            {instance}="instance"></assessment-add-comment>
+                    <comment-add-form class="comment-add-form"
+                                            {instance}="instance"
+                    ></comment-add-form>
                 {{/is_allowed}}
               {{/if_in}}
                 <assessment-mapped-comments {mapped-items}="comments"></assessment-mapped-comments>

@@ -5,12 +5,11 @@
 <form class="simple-modal__body">
     <div class="simple-modal__section">
         <div class="field__title form-field__title">
-          <label class="field__title-text" for="form-field-{{caIds.defId}}">{{content.title}}</label>
+          <label class="field__title-text">{{content.title}}</label>
         </div>
           <auto-save-form-field
             {type}="content.type"
             {value}="content.value"
-            {field-id}="caIds.defId"
             {options}="content.options"
             {disabled}="true"
           ></auto-save-form-field>
@@ -18,14 +17,10 @@
       {{#if comment}}
           <div class="simple-modal__section">
             <div class="simple-modal__section-title">Comment</div>
-              <assessment-add-comment
-                {instance}="instance"
-                {(is-empty)}="isEmpty"
-                {(state)}="state"
-                {ca-ids}="caIds"
-                {(context-scope)}="content.contextScope"
-                comment-place-holder="Enter comment"
-              ></assessment-add-comment>
+            <comment-input
+                      {(value)}="*commentValue"
+                      {disabled}="*isSaving"
+            ></comment-input>
           </div>
       {{/if}}
       {{#if evidence}}
@@ -38,7 +33,11 @@
 <div class="simple-modal__footer">
     <div class="simple-modal__toolbar">
       {{#if comment}}
-          <button class="btn btn-small btn-green simple-modal__toolbar-item" {{#if isEmpty}}disabled{{/if}} ($click)="saveAttachments">Save</button>
+         <comment-add-button class="simple-modal__toolbar-item"
+                             {(value)}="*commentValue"
+                             {^is-saving}="*isSaving"
+                             (comment-created)="onCommentCreated(%event)"
+         >Save</comment-add-button>
       {{/if}}
         <button class="btn btn-small btn-white simple-modal__toolbar-item" ($click)="hide">Close</button>
     </div>

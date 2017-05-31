@@ -32,26 +32,58 @@
             save: false,
             controls: false
           }
-        },
-        actionBtnText: {
-          get: function () {
-            return this.attr('comment') ? 'Save' : 'Done';
-          }
         }
       },
+      allSaved: false,
+      formSavedDeferred: can.Deferred(),
       content: {
         contextScope: {},
         fields: [],
         title: '',
+        type: 'dropdown',
         value: null,
         options: []
       },
       caIds: {},
-      isEmpty: true,
-      saveAttachments: function () {
-        return this.attr('comment') ?
-          this.attr('state.save', true) :
-          this.attr('state.open', false);
+      onCommentCreated: function (e) {
+        var comment = e.comment;
+        var instance = this.attr('instance');
+        var context = instance.attr('context');
+        var commentUpdate = {
+          context: context,
+          assignee_type: GGRC.Utils.getAssigneeType(this.attr('instance'))
+        };
+        var relation = new CMS.Models.Relationship({
+          context: context,
+          destination: instance
+        });
+
+        var addComment = function () {
+          return comment.attr(commentUpdate)
+            .save()
+            .done(function (comment) {
+              relation.attr({source: comment.serialize()})
+                .save()
+                .then(function () {
+                  this.attr('instance').dispatch('refreshInstance');
+                }.bind(this));
+            }.bind(this));
+        }.bind(this);
+
+        commentUpdate.custom_attribute_revision_upd = {
+          custom_attribute_value: {id: this.attr('caIds.valueId')},
+          custom_attribute_definition: {id: this.attr('caIds.defId')}
+        };
+
+        this.attr('content.contextScope.errorsMap.comment', false);
+        this.attr('content.contextScope.validation.valid',
+          !this.attr('content.contextScope.errorsMap.evidence'));
+        this.attr('state.open', false);
+        this.attr('state.save', false);
+
+        this.attr('formSavedDeferred').then(function () {
+          addComment();
+        });
       }
     }
   });
