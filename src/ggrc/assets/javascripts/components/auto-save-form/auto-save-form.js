@@ -49,6 +49,24 @@
           }
         }
       },
+      formSavedDeferred: can.Deferred(),
+      editMode: false,
+      saving: false,
+      allSaved: true,
+      fieldsToSaveAvailable: false,
+      autoSaveScheduled: false,
+      autoSaveAfterSave: false,
+      autoSaveTimeoutHandler: null,
+      fields: [],
+      saveCallback: null,
+      triggerSaveCbs: null,
+      init: function () {
+        this._save = this.save.bind(this);
+        this.attr('triggerSaveCbs').add(this._save);
+      },
+      unsubscribe: function () {
+        this.attr('triggerSaveCbs').remove(this._save);
+      },
       updateEvidenceValidation: function () {
         var isEvidenceRequired = this.attr('isEvidenceRequired');
         this.attr('fields')
@@ -74,23 +92,6 @@
                 item.attr('validationConfig')[item.attr('value')] === 3);
               }).length;
         return optionsWithEvidence > this.attr('evidenceAmount');
-      },
-      editMode: false,
-      saving: false,
-      allSaved: false,
-      fieldsToSaveAvailable: false,
-      autoSaveScheduled: false,
-      autoSaveAfterSave: false,
-      autoSaveTimeoutHandler: null,
-      fields: [],
-      saveCallback: null,
-      triggerSaveCbs: null,
-      init: function () {
-        this._save = this.save.bind(this);
-        this.attr('triggerSaveCbs').add(this._save);
-      },
-      unsubscribe: function () {
-        this.attr('triggerSaveCbs').remove(this._save);
       },
       performValidation: function (field, value) {
         var isEvidenceRequired = this.attr('isEvidenceRequired');
@@ -169,6 +170,7 @@
             }
 
             self.attr('allSaved', true);
+            self.attr('formSavedDeferred').resolve();
           })
           // todo: error handling
           .always(function () {
