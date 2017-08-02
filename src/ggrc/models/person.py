@@ -187,6 +187,13 @@ class Person(CustomAttributable, CustomAttributeMapable, HasOwnContext,
                             key=lambda x: role_hierarchy.get(x, -1))
       return sorted_roles[0]
 
+  def log_json_base(self):
+    """Log custom attribute values."""
+    res = super(Person, self).log_json_base()
+    res["system_wide_role"] = self.system_wide_role
+    res["type"] = self.type
+    return res
+
 
 @event.listens_for(Session, 'after_flush_postexec')
 def receive_after_flush(session, _):
