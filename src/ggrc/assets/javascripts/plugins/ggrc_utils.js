@@ -330,10 +330,11 @@
      * @param {Object} target - the target object of the mapping
      * @param {Object} options - the options objects, similar to the one that is
      *   passed as an argument to Mustache helpers
+     * @param {Boolean} isIssueUnmap - do not prevent unmap 'issue adit'
      *
      * @return {Boolean} - true if mapping is allowed, false otherwise
      */
-    allowed_to_map: function (source, target, options) {
+    allowed_to_map: function (source, target, options, isIssueUnmap) {
       var canMap = false;
       var types;
       var targetType;
@@ -347,7 +348,9 @@
 
       var FORBIDDEN = Object.freeze({
         oneWay: Object.freeze({
-          'issue audit': true // mapping audit to issue is not allowed
+          // mapping audit to issue is not allowed,
+          // but unmap can be possible
+          'issue audit': !isIssueUnmap
         }),
         // NOTE: the names in every type pair must be sorted alphabetically!
         twoWay: Object.freeze({
