@@ -21,7 +21,7 @@
     template: '<isolate-form><content/></isolate-form>',
     viewModel: {
       define: {
-        fromBinding: {
+        fromQueryApi: {
           type: Boolean,
           value: false
         }
@@ -35,6 +35,7 @@
       mapping: '@',
       deferred: '@',
       attributes: {},
+      newInstance: false,
       list: [],
       // the following are just for the case when we have no object to start with,
       changes: []
@@ -74,10 +75,12 @@
           this.viewModel[this.viewModel.source_mapping_source];
 
         if (sourceMappingSource) {
-          if (this.viewModel.attr('fromBinding')) {
-            this.get_mapping().then(function (list) {
-              this.setListItems(list);
-            }.bind(this));
+          if (this.viewModel.attr('fromQueryApi')) {
+            if (!this.viewModel.attr('newInstance')) {
+              this.getMappedObjects().then(function (list) {
+                this.setListItems(list);
+              }.bind(this));
+            }
           } else {
             sourceMappingSource.get_binding(this.viewModel.source_mapping)
               .refresh_instances()
@@ -110,7 +113,7 @@
         var currentList = this.viewModel.attr('list');
         this.viewModel.attr('list', currentList.concat(can.map(list,
           function (binding) {
-            return binding.instance;
+            return binding.instance || binding;
           })));
       },
       '{viewModel} list': function () {
@@ -206,12 +209,68 @@
         }
         this.viewModel.attr('show_new_object_form', false);
       },
+      updateActions: function (item, isUnmap) {
+        var instance = this.viewModel.attr('instance');
+        var actions = instance.attr('actions');
+        var actionName = isUnmap ? 'remove_related' : 'add_related';
+
+        // remove from the actions in case when the mapping was added
+        var removeFrom = isUnmap ? 'add_related' : 'remove_related';
+
+        var removed = _.remove(actions.attr(removeFrom) || [],
+          function (actionItem) {
+            return actionItem.id === item.id && actionItem.type === item.type;
+          }
+        );
+
+        if (!removed.length) {
+          if (!actions.attr(actionName)) {
+            actions.attr(actionName, []);
+          }
+
+          actions.attr(actionName).push({
+            id: item.id,
+            type: item.type
+          });
+        }
+      },
+      mananeObjectMappings: function (data, isUnmap) {
+        var instance = this.viewModel.attr('instance');
+        var list = this.viewModel.attr('list');
+        var self = this;
+
+        if (!instance.attr('actions')) {
+          instance.attr('actions', {});
+        }
+
+        _.each(data.arr || [data], function (item) {
+          var index;
+          if (isUnmap) {
+            self.updateActions(item, true);
+
+            // remove from list
+            index = _.findIndex(list, function (listItem) {
+              return listItem.id === item.id && listItem.type === item.type;
+            });
+            self.viewModel.attr('list').splice(index, 1);
+          } else {
+            self.updateActions(item);
+            self.addListItem(item);
+          }
+        });
+      },
       '[data-toggle=unmap] click': function (el, ev) {
         ev.stopPropagation();
+
         can.map(el.find('.result'), function (resultEl) {
           var obj = $(resultEl).data('result');
           var len = this.viewModel.list.length;
           var mapping;
+
+          if (this.viewModel.attr('fromQueryApi')) {
+            this.mananeObjectMappings(obj, true);
+            return;
+          }
 
           if (this.viewModel.attr('deferred')) {
             this.viewModel.changes.push({what: obj, how: 'remove'});
@@ -297,6 +356,12 @@
         var mapping;
         ev.stopPropagation();
 
+        if (this.viewModel.attr('fromQueryApi')) {
+          console.log('add by ACTIONS');
+          this.mananeObjectMappings(data);
+          return;
+        }
+
         can.each(data.arr || [data], function (obj) {
           if (this.viewModel.attr('deferred')) {
             this.viewModel.changes.push({what: obj, how: 'add'});
@@ -356,49 +421,48 @@
 
         this.viewModel.list.push(item);
       },
-      get_mapping: function () {
-        var parentInstance = this.viewModel.attr('instance');
+      buildQuery: function (type) {
+        return GGRC.Utils.QueryAPI.buildParams(
+          type,
+          {},
+          {
+            type: this.viewModel.attr('instance.type'),
+            operation: 'relevant',
+            id: this.viewModel.attr('instance.id')
+          }
+        );
+      },
+      getMappedObjects: function () {
         var dfd = can.Deferred();
-        var snapshots = GGRC.Utils.Snapshots;
-        parentInstance.get_binding('related_objects_as_source')
-          .refresh_instances()
-          .then(function (list) {
-            var newList = list.filter(function (item) {
-              return !snapshots.isSnapshotModel(item.instance.type) &&
-                  item.instance.type !== 'Comment' &&
-                  item.instance.type !== 'Document'; // exclude urls
+        var auditQuery = this.buildQuery('Audit')[0];
+        var issueQuery = this.buildQuery('Issue')[0];
+        var snapshotQuery = this.buildQuery('Snapshot')[0];
+
+        GGRC.Utils.QueryAPI
+          .makeRequest({data: [auditQuery, issueQuery, snapshotQuery]})
+          .then(function (response) {
+            var snapshots;
+            var list;
+
+            snapshots = response[2].Snapshot.values;
+            snapshots.forEach(function (snapshot) {
+              var object = GGRC.Utils.Snapshots.toObject(snapshot);
+
+              snapshot.class = object.class;
+              snapshot.snapshot_object_class = 'snapshot-object';
+              snapshot.title = object.title;
+              snapshot.description = object.description;
+              snapshot.viewLink = object.originalLink;
             });
-            newList.forEach(function (item) {
-              var query;
-              var instance = item.instance;
 
-              if (snapshots.isSnapshotType(instance)) {
-                query = snapshots.getSnapshotItemQuery(
-                  parentInstance, instance.child_id, instance.child_type);
+            list = response[0].Audit.values
+              .concat(response[1].Issue.values)
+              .concat(snapshots);
 
-                GGRC.Utils.QueryAPI
-                  .makeRequest(query)
-                  .done(function (responseArr) {
-                    var data = responseArr[0];
-                    var value = data.Snapshot.values[0];
-                    var object;
+            dfd.resolve(list);
+          }
+        );
 
-                    if (!value) {
-                      return;
-                    }
-
-                    object = GGRC.Utils.Snapshots.toObject(value);
-                    instance.attr('class', object.class);
-                    instance.attr('snapshot_object_class',
-                      'snapshot-object');
-                    instance.attr('title', object.title);
-                    instance.attr('description', object.description);
-                    instance.attr('viewLink', object.originalLink);
-                  });
-              }
-            });
-            dfd.resolve(newList);
-          });
         return dfd;
       }
     },
