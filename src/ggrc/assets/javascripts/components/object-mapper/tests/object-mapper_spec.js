@@ -22,10 +22,10 @@ describe('GGRC.Components.objectMapper', function () {
     var parentViewModel;
     beforeEach(function () {
       parentViewModel = new can.Map({
-        generalConfig: {
+        general: {
           useSnapshots: false
         },
-        specialConfigs: []
+        special: []
       });
     });
     it('returns object with function "isLoadingOrSaving"', function () {
@@ -36,7 +36,7 @@ describe('GGRC.Components.objectMapper', function () {
     describe('initializes useSnapshots flag', function () {
       it('with true if set with help a general config', function () {
         var result;
-        parentViewModel.generalConfig.useSnapshots = true;
+        parentViewModel.general.useSnapshots = true;
         result = Component.prototype.viewModel({}, parentViewModel)();
         expect(result.attr('useSnapshots')).toEqual(true);
       });
@@ -72,56 +72,25 @@ describe('GGRC.Components.objectMapper', function () {
 
     describe('onSubmit() method', function () {
       var vm;
-      var queue;
 
       beforeEach(function () {
         vm = new Component.prototype.viewModel({}, parentViewModel)();
-        queue = [{
-          a: 1
-        }, {
-          a: 2
-        }, {
-          b: 3
-        }];
-        vm.attr('pendingConfigQueue', queue);
-        spyOn(vm, 'update');
+        vm.attr({
+          freezedConfigTillSubmit: null,
+          currConfig: {
+            a: 1,
+            b: 2
+          }
+        });
       });
 
-      it('updates VM with help resolved configs from pendingConfigQueue ' +
-      'to one common config',
+      it('sets freezedConfigTillSubmit to currConfig',
       function () {
         vm.onSubmit();
 
-        expect(vm.update).toHaveBeenCalledWith(
-          GGRC.Utils.resolveQueue(queue)
+        expect(vm.attr('freezedConfigTillSubmit')).toEqual(
+          vm.attr('currConfig')
         );
-      });
-    });
-
-    describe('prepareConfig() method', function () {
-      var vm;
-
-      beforeEach(function () {
-        vm = new Component.prototype.viewModel({}, parentViewModel)();
-        spyOn(vm, 'update');
-      });
-
-      it('pushes config to pending config queue', function () {
-        var config = {};
-        var addedConfig;
-
-        vm.prepareConfig(config);
-        addedConfig = vm.attr('pendingConfigQueue')[0].serialize();
-        expect(addedConfig).toEqual(config);
-      });
-
-      it('updates relatedTo field for VM', function () {
-        var config = {
-          relevantTo: [{}]
-        };
-        vm.prepareConfig(config);
-
-        expect(vm.update).toHaveBeenCalledWith(config);
       });
     });
   });
@@ -489,6 +458,16 @@ describe('GGRC.Components.objectMapper', function () {
   });
 
   describe('allowedToCreate() method', function () {
+    var originalVM;
+
+    beforeAll(function () {
+      originalVM = viewModel.attr();
+    });
+
+    afterAll(function () {
+      viewModel.attr(originalVM);
+    });
+
     it('returns true if it is not an in-scope model',
       function () {
         var result;
@@ -497,9 +476,22 @@ describe('GGRC.Components.objectMapper', function () {
         result = viewModel.allowedToCreate();
         expect(result).toEqual(true);
       });
-    it('returns false if it is an in-scope model',
+
+    it('returns true if it is an in-scope model but mapped type is not ' +
+    'snapshotable',
       function () {
         var result;
+        spyOn(GGRC.Utils.Snapshots, 'isInScopeModel')
+          .and.returnValue(true);
+        result = viewModel.allowedToCreate();
+        expect(result).toEqual(true);
+      });
+
+    it('returns false if it is an in-scope model and mapped type is ' +
+    'snapshotable',
+      function () {
+        var result;
+        viewModel.attr('type', 'Control');
         spyOn(GGRC.Utils.Snapshots, 'isInScopeModel')
           .and.returnValue(true);
         result = viewModel.allowedToCreate();
@@ -508,6 +500,16 @@ describe('GGRC.Components.objectMapper', function () {
   });
 
   describe('showWarning() method', function () {
+    var originalVM;
+
+    beforeAll(function () {
+      originalVM = viewModel.attr();
+    });
+
+    afterAll(function () {
+      viewModel.attr(originalVM);
+    });
+
     it('returns false if is an in-scope model', function () {
       var result;
       spyOn(GGRC.Utils.Snapshots, 'isInScopeModel')
@@ -516,7 +518,19 @@ describe('GGRC.Components.objectMapper', function () {
       expect(result).toEqual(false);
     });
 
-    it('returns true if source object is a Snapshot parent', function () {
+    it('returns true if source object is a Snapshot parent and mapped type ' +
+    'is snapshotable', function () {
+      var result;
+      spyOn(GGRC.Utils.Snapshots, 'isInScopeModel')
+        .and.returnValue(false);
+      viewModel.attr('object', 'Audit');
+      viewModel.attr('type', 'Control');
+      result = viewModel.showWarning();
+      expect(result).toEqual(true);
+    });
+
+    it('returns true if mapped object is both a ' +
+      'Snapshot parent and snapshotable', function () {
       var result;
       spyOn(GGRC.Utils.Snapshots, 'isInScopeModel')
         .and.returnValue(false);
@@ -525,22 +539,7 @@ describe('GGRC.Components.objectMapper', function () {
           return v === 'o';
         });
       viewModel.attr('object', 'o');
-      viewModel.attr('type', 't');
-      result = viewModel.showWarning();
-      expect(result).toEqual(true);
-    });
-
-    it('returns true if is mapped object is a ' +
-      'Snapshot parent', function () {
-      var result;
-      spyOn(GGRC.Utils.Snapshots, 'isInScopeModel')
-        .and.returnValue(false);
-      spyOn(GGRC.Utils.Snapshots, 'isSnapshotParent')
-        .and.callFake(function (v) {
-          return v === 't';
-        });
-      viewModel.attr('object', 'o');
-      viewModel.attr('type', 't');
+      viewModel.attr('type', 'Control');
       result = viewModel.showWarning();
       expect(result).toEqual(true);
     });
