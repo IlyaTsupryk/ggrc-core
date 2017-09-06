@@ -173,9 +173,8 @@ class TestSnapshotIndexing(SnapshotterBaseTestCase):
 
   def test_update_indexing(self):
     """Test that creating objects results in full index"""
-    custom_attribute_defs = self.create_custom_attribute_definitions()
-
     self._import_file("snapshotter_create.csv")
+    custom_attribute_defs = self.create_custom_attribute_definitions()
 
     access_group = db.session.query(models.AccessGroup).filter(
         models.AccessGroup.title == "ag-2"
