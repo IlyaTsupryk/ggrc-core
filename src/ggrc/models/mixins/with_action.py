@@ -10,9 +10,9 @@ from collections import namedtuple, defaultdict
 
 from ggrc import db
 from ggrc.login import get_current_user
+from ggrc.models import inflector
 from ggrc.models.comment import Comment
 from ggrc.models.document import Document
-from ggrc.models.snapshot import Snapshot
 from ggrc.models.exceptions import ValidationError
 from ggrc.models.reflection import ApiAttributes
 from ggrc.models.reflection import Attribute
@@ -29,11 +29,13 @@ class WithAction(object):
       "add_related",
       "remove_related",
   ]
-  _object_map = {
-      "Document": Document,
-      "Comment": Comment,
-      "Snapshot": Snapshot,
-  }
+  _map_allowed_models = [
+      "Document",
+      "Comment",
+      "Snapshot",
+      "Assessment",
+      "Issue",
+  ]
   _actions = None
   _added = None  # collect added objects for signals sending
   _deleted = None  # collect deleted objects fro signals sending
@@ -68,8 +70,8 @@ class WithAction(object):
       obj_type = action.get("type")
       if not obj_type:
         raise ValidationError('type is not defined')
-      obj_class = self._object_map.get(obj_type)
-      if not obj_class:
+      obj_class = inflector.get_model(obj_type)
+      if obj_type not in self._map_allowed_models or not obj_class:
         raise ValueError('Invalid action type: {type}'.format(type=obj_type))
 
       # get handler class
@@ -153,9 +155,11 @@ class WithAction(object):
       """Get object specified in action"""
       if not action.id:
         raise ValueError("id is not defined")
+      obj_class = None
       # pylint: disable=protected-access
-      obj_class = WithAction._object_map[action.type]
-      obj = obj_class.query.get(action.id)
+      if action.type in WithAction._map_allowed_models:
+        obj_class = inflector.get_model(action.type)
+      obj = obj_class.query.get(action.id) if obj_class else None
       if not obj:
         raise ValueError(
             'Object not found: {type} {id}'.format(type=action.type,
@@ -223,3 +227,9 @@ class WithAction(object):
 
   class SnapshotAction(BaseAction):
     """Snapshot action"""
+
+  class AssessmentAction(BaseAction):
+    """Assessment action"""
+
+  class IssueAction(BaseAction):
+    """Issue action"""
