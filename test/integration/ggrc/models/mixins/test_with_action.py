@@ -96,6 +96,43 @@ class TestDocumentWithActionMixin(TestCase, WithQueryApi):
     self.assertEqual(relationship.destination_id, document.id)
     self.assertEqual(relationship.source_id, issue.id)
 
+  def test_map_assessment_issue(self):
+    """Test map assessment on issue."""
+    with factories.single_commit():
+      issue = factories.IssueFactory()
+      assessment = factories.AssessmentFactory()
+    response = self.api.put(issue, {"actions": {"add_related": [
+        {
+            "id": assessment.id,
+            "type": "Assessment",
+        }
+    ]}})
+    self.assert200(response)
+
+    rel_id = response.json["issue"]["related_destinations"][0]["id"]
+    relationship = all_models.Relationship.query.get(rel_id)
+    self.assertEqual(relationship.destination_id, assessment.id)
+    self.assertEqual(relationship.source_id, issue.id)
+
+  def test_map_issue_assessment(self):
+    """Test map issue on assessment."""
+    with factories.single_commit():
+      issue = factories.IssueFactory()
+      assessment = factories.AssessmentFactory()
+
+    response = self.api.put(assessment, {"actions": {"add_related": [
+        {
+            "id": issue.id,
+            "type": "Issue",
+        }
+    ]}})
+    self.assert200(response)
+
+    rel_id = response.json["assessment"]["related_destinations"][0]["id"]
+    relationship = all_models.Relationship.query.get(rel_id)
+    self.assertEqual(relationship.destination_id, issue.id)
+    self.assertEqual(relationship.source_id, assessment.id)
+
   def test_wrong_add_url(self):
     """Test wrong add url action."""
     assessment = factories.AssessmentFactory()
@@ -135,7 +172,22 @@ class TestDocumentWithActionMixin(TestCase, WithQueryApi):
 
     response = self.api.put(assessment, {"actions": {"add_related": [
         {
+            "type": "Assessment",
+        }
+    ]}})
+    self.assert400(response)
+
+    response = self.api.put(assessment, {"actions": {"add_related": [
+        {
             "id": None,
+        }
+    ]}})
+    self.assert400(response)
+
+    response = self.api.put(assessment, {"actions": {"add_related": [
+        {
+            "id": None,
+            "type": "Assessment",
         }
     ]}})
     self.assert400(response)
@@ -155,6 +207,13 @@ class TestDocumentWithActionMixin(TestCase, WithQueryApi):
 
     response = self.api.put(issue, {"actions": {"add_related": [
         {
+            "type": "Assessment",
+        }
+    ]}})
+    self.assert400(response)
+
+    response = self.api.put(issue, {"actions": {"add_related": [
+        {
             "id": None,
         }
     ]}})
@@ -164,6 +223,14 @@ class TestDocumentWithActionMixin(TestCase, WithQueryApi):
         {
             "id": None,
             "type": "Document",
+        }
+    ]}})
+    self.assert400(response)
+
+    response = self.api.put(issue, {"actions": {"add_related": [
+        {
+            "id": None,
+            "type": "Assessment",
         }
     ]}})
     self.assert400(response)
@@ -196,6 +263,42 @@ class TestDocumentWithActionMixin(TestCase, WithQueryApi):
         {
             "id": document.id,
             "type": "Document",
+        }
+    ]}})
+    self.assert200(response)
+    relationship = all_models.Relationship.query.get(rel_id)
+    self.assertIsNone(relationship)
+
+  def test_unmap_asmnt_as_dst_issue(self):
+    """Test unmapping of assessment set as relationship destination on
+    issue."""
+    with factories.single_commit():
+      issue = factories.IssueFactory()
+      assessment = factories.AssessmentFactory()
+      rel_id = factories.RelationshipFactory(source=issue,
+                                             destination=assessment).id
+    response = self.api.put(issue, {"actions": {"remove_related": [
+        {
+            "id": assessment.id,
+            "type": "Assessment",
+        }
+    ]}})
+    self.assert200(response)
+    relationship = all_models.Relationship.query.get(rel_id)
+    self.assertIsNone(relationship)
+
+  def test_unmap_issue_as_dst_asmnt(self):
+    """Test unmapping of issue set as relationship destination on
+    assessment."""
+    with factories.single_commit():
+      issue = factories.IssueFactory()
+      assessment = factories.AssessmentFactory()
+      rel_id = factories.RelationshipFactory(source=assessment,
+                                             destination=issue).id
+    response = self.api.put(assessment, {"actions": {"remove_related": [
+        {
+            "id": issue.id,
+            "type": "Issue",
         }
     ]}})
     self.assert200(response)
@@ -236,10 +339,50 @@ class TestDocumentWithActionMixin(TestCase, WithQueryApi):
     relationship = all_models.Relationship.query.get(rel_id)
     self.assertIsNone(relationship)
 
+  def test_unmap_asmnt_as_src_issue(self):
+    """Test unmapping of assessment set as relationship source on
+    issue."""
+    with factories.single_commit():
+      issue = factories.IssueFactory()
+      audit = factories.AuditFactory()
+      assessment = factories.AssessmentFactory(audit=audit)
+      rel_id = factories.RelationshipFactory(source=assessment,
+                                             destination=issue).id
+    response = self.api.put(issue, {"actions": {"remove_related": [
+        {
+            "id": assessment.id,
+            "type": "Assessment",
+        }
+    ]}})
+    self.assert200(response)
+    relationship = all_models.Relationship.query.get(rel_id)
+    self.assertIsNone(relationship)
+
+  def test_unmap_issue_as_src_asmnt(self):
+    """Test unmapping of issue set as relationship source on
+    assessment."""
+    with factories.single_commit():
+      issue = factories.IssueFactory()
+      audit = factories.AuditFactory()
+      assessment = factories.AssessmentFactory(audit=audit)
+      rel_id = factories.RelationshipFactory(source=issue,
+                                             destination=assessment).id
+    response = self.api.put(assessment, {"actions": {"remove_related": [
+        {
+            "id": issue.id,
+            "type": "Issue",
+        }
+    ]}})
+    self.assert200(response)
+    relationship = all_models.Relationship.query.get(rel_id)
+    self.assertIsNone(relationship)
+
   def test_wrong_remove_action_assessment(self):
     """Test wrong remove action on assessment."""
-    assessment = factories.AssessmentFactory()
-    document_id = factories.DocumentFactory().id
+    with factories.single_commit():
+      assessment = factories.AssessmentFactory()
+      document_id = factories.DocumentFactory().id
+      issue_id = factories.IssueFactory().id
 
     response = self.api.put(assessment, {"actions": {"remove_related": [{}]}})
     self.assert400(response)
@@ -253,7 +396,21 @@ class TestDocumentWithActionMixin(TestCase, WithQueryApi):
 
     response = self.api.put(assessment, {"actions": {"remove_related": [
         {
+            "id": issue_id,
+        }
+    ]}})
+    self.assert400(response)
+
+    response = self.api.put(assessment, {"actions": {"remove_related": [
+        {
             "type": "Document",
+        }
+    ]}})
+    self.assert400(response)
+
+    response = self.api.put(assessment, {"actions": {"remove_related": [
+        {
+            "type": "Issue",
         }
     ]}})
     self.assert400(response)
@@ -266,10 +423,20 @@ class TestDocumentWithActionMixin(TestCase, WithQueryApi):
     ]}})
     self.assert400(response)
 
+    response = self.api.put(assessment, {"actions": {"remove_related": [
+        {
+            "id": None,
+            "type": "Issue",
+        }
+    ]}})
+    self.assert400(response)
+
   def test_wrong_remove_action_issue(self):
     """Test wrong remove action on issue."""
-    issue = factories.IssueFactory()
-    document_id = factories.DocumentFactory().id
+    with factories.single_commit():
+      issue = factories.IssueFactory()
+      document_id = factories.DocumentFactory().id
+      assessment_id = factories.AssessmentFactory().id
 
     response = self.api.put(issue, {"actions": {"remove_related": [{}]}})
     self.assert400(response)
@@ -283,7 +450,21 @@ class TestDocumentWithActionMixin(TestCase, WithQueryApi):
 
     response = self.api.put(issue, {"actions": {"remove_related": [
         {
+            "id": assessment_id,
+        }
+    ]}})
+    self.assert400(response)
+
+    response = self.api.put(issue, {"actions": {"remove_related": [
+        {
             "type": "Document",
+        }
+    ]}})
+    self.assert400(response)
+
+    response = self.api.put(issue, {"actions": {"remove_related": [
+        {
+            "type": "Assessment",
         }
     ]}})
     self.assert400(response)
@@ -675,11 +856,16 @@ class TestMultiplyActions(TestCase, WithQueryApi):
 
   def test_multiply_actions(self):
     """Test multiply actions"""
-    assessment = factories.AssessmentFactory()
-    doc_map = factories.DocumentFactory(link="google1.com")
-    doc_del = factories.DocumentFactory(link="google2.com")
-    factories.RelationshipFactory(source=assessment,
-                                  destination=doc_del)
+    with factories.single_commit():
+      assessment = factories.AssessmentFactory()
+      issue_add = factories.IssueFactory()
+      issue_del = factories.IssueFactory()
+      doc_map = factories.DocumentFactory(link="google1.com")
+      doc_del = factories.DocumentFactory(link="google2.com")
+      factories.RelationshipFactory(source=assessment,
+                                    destination=doc_del)
+      factories.RelationshipFactory(source=assessment,
+                                    destination=issue_del)
 
     ca_def = factories.CustomAttributeDefinitionFactory(
         title="def1",
@@ -715,6 +901,10 @@ class TestMultiplyActions(TestCase, WithQueryApi):
                 "type": "Document",
             },
             {
+                "id": issue_add.id,
+                "type": "Issue",
+            },
+            {
                 "id": None,
                 "type": "Comment",
                 "description": "comment1",
@@ -724,7 +914,12 @@ class TestMultiplyActions(TestCase, WithQueryApi):
             {
                 "id": doc_del.id,
                 "type": "Document",
-            }]}})
+            },
+            {
+                "id": issue_del.id,
+                "type": "Issue",
+            }
+        ]}})
     self.assert200(response)
 
     preconditions_failed = response.json["assessment"]["preconditions_failed"]
