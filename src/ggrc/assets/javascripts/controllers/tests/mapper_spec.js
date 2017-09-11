@@ -75,7 +75,7 @@ describe('GGRC.Controllers.ObjectMapper', function () {
     describe('shows mapper for snapshots', function () {
       beforeEach(function () {
         jasmine.clock().install();
-        spyOn(window.location, 'assign');
+        //spyOn(window.location, 'assign');
       });
 
       afterEach(function () {
@@ -124,18 +124,6 @@ describe('GGRC.Controllers.ObjectMapper', function () {
           expect(args[1].general['join-object-id']).toBeNull();
           done();
         });
-      });
-
-      it('shows error and redirect to /dashboard after 3000 if ' +
-      'scopeObject does not have id field', function () {
-        scopeObject.removeAttr('id');
-        method(fakeData);
-
-        jasmine.clock().tick(3001);
-
-        expect(window.location.assign.calls.argsFor(0)[0])
-          .toMatch(/\/dashboard/g);
-        expect(GGRC.Errors.notifier).toHaveBeenCalled();
       });
 
       it('throws Error with message if data.join_object_id does not exist',
