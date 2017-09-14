@@ -56,13 +56,15 @@ $grid-data-header-height: 66px;
       opacity: 0.5;
 
       // Should affect only direct children
-      > .spinner-wrapper {
+      > .spinner-wrapper,
+      .modal-mapped-objects > .spinner-wrapper {
         padding: 0;
         margin: 0;
         display: flex;
         opacity: 0;
 
-        &.active {
+        &.active,
+        .spinner {
           z-index: 9999;
           opacity: 1;
         }
@@ -127,6 +129,7 @@ $grid-data-header-height: 66px;
     position: relative;
     margin: 0;
     border-bottom: 1px solid $border-color;
+    z-index: 9999;
   }
 
   &__header-text {
@@ -152,6 +155,39 @@ $grid-data-header-height: 66px;
     width: 85%;
     max-width: 85%;
     height: 85%;
+  }
+
+  &.related-snapshots {
+    min-width: 600px;
+    .tree-pagination {
+       display: flex;
+       justify-content: flex-end;
+       align-items: center;
+    }
+
+    .simple-modal {
+      &__header {
+        border-bottom: none;
+      }
+
+      &__title__name {
+        font-size: 24px;
+      }
+
+      &__body {
+        padding-top: 8px;
+      }
+
+      &__sub-header-section {
+        font-size: 15px;
+        margin-bottom: 40px;
+      }
+
+      &__footer {
+        border-top: none;
+        padding: 16px;
+      }
+    }
   }
 
   &.related-assessments {
