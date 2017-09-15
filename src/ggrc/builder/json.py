@@ -9,7 +9,6 @@
 from datetime import datetime
 from logging import getLogger
 
-from flask import g
 import iso8601
 import sqlalchemy
 from sqlalchemy.ext.associationproxy import AssociationProxy
@@ -25,6 +24,7 @@ from ggrc.login import get_current_user_id
 from ggrc.models.reflection import AttributeInfo
 from ggrc.models.types import JsonType
 from ggrc.models.utils import PolymorphicRelationship
+from ggrc.utils import referenced_objects
 from ggrc.utils import url_for
 from ggrc.utils import view_url_for
 
@@ -251,11 +251,7 @@ class UpdateAttrHandler(object):
       rel_obj = json_obj.get(attr_name)
       if rel_obj:
         try:
-          cache = getattr(g, "referenced_objects", {})
-          if rel_class in cache:
-            return cache.get(rel_class, {}).get(rel_obj[u'id'])
-          return db.session.query(rel_class).filter(
-              rel_class.id == rel_obj[u'id']).first()
+          return referenced_objects.get(rel_class, rel_obj["id"])
         except TypeError:
           raise TypeError(''.join(['Failed to convert attribute ', attr_name]))
       return None
