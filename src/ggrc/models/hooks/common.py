@@ -7,6 +7,7 @@ import sqlalchemy as sa
 
 from ggrc import db
 from ggrc.models import all_models
+from ggrc.utils import referenced_objects
 
 
 def ensure_field_not_changed(obj, field_name):
@@ -30,9 +31,13 @@ def map_objects(src, dst):
     return
   if 'id' not in dst or 'type' not in dst:
     return
+
+  destination = referenced_objects.get(dst["type"], dst["id"])
+  if not destination:
+    raise ValueError("No {} with id {} found."
+                     .format(dst["type"], dst["id"]))
   db.session.add(all_models.Relationship(
       source=src,
-      destination_id=dst["id"],
-      destination_type=dst["type"],
+      destination=destination,
       context_id=src.context_id,
   ))
