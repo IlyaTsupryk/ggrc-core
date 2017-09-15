@@ -17,7 +17,7 @@ from ggrc.models.automapping import Automapping
 from ggrc.models.relationship import Relationship
 from ggrc.rbac.permissions import is_allowed_update
 from ggrc.services.common import get_cache
-from ggrc.utils import benchmark, with_nop
+from ggrc.utils import benchmark
 
 
 # pylint: disable=invalid-name
@@ -45,15 +45,11 @@ class AutomapperGenerator(object):
 
   COUNT_LIMIT = 10000
 
-  def __init__(self, use_benchmark=True):
+  def __init__(self):
     self.processed = set()
     self.queue = set()
     self.cache = collections.defaultdict(set)
     self.auto_mappings = set()
-    if use_benchmark:
-      self.benchmark = benchmark
-    else:
-      self.benchmark = with_nop
 
   def related(self, obj):
     if obj in self.cache:
@@ -102,7 +98,7 @@ class AutomapperGenerator(object):
 
   def generate_automappings(self, relationship):
     self.auto_mappings = set()
-    with self.benchmark("Automapping generate_automappings"):
+    with benchmark("Automapping generate_automappings"):
       # initial relationship is special since it is already created and
       # processing it would abort the loop so we manually enqueue the
       # neighborhood
@@ -143,7 +139,7 @@ class AutomapperGenerator(object):
     """Manually INSERT generated automappings."""
     if not self.auto_mappings:
       return
-    with self.benchmark("Automapping flush"):
+    with benchmark("Automapping flush"):
       current_user_id = login.get_current_user_id()
       automapping_result = db.session.execute(
           Automapping.__table__.insert().values(
