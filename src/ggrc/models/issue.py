@@ -19,6 +19,7 @@ from ggrc.models.object_person import Personable
 from ggrc.models.relationship import Relatable
 from ggrc.models import reflection
 from ggrc.models.track_object_state import HasObjectState
+from ggrc.fulltext import attributes as ft_attributes
 from ggrc.fulltext.mixin import Indexed
 
 
@@ -54,6 +55,11 @@ class Issue(Roleable, HasObjectState, TestPlanned, CustomAttributable,
       },
       "audit": None,
   }
+
+  _fulltext_attrs = [
+      ft_attributes.BooleanFullTextAttr("allow_map_to_audit",
+                                        "allow_map_to_audit"),
+  ]
 
   audit_id = deferred(
       db.Column(db.Integer, db.ForeignKey('audits.id'), nullable=True),

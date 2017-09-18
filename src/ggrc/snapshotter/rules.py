@@ -39,7 +39,6 @@ class Types(object):
 
   scoped = {
       "Assessment",
-      "Issue",
   }
 
   ignore = {

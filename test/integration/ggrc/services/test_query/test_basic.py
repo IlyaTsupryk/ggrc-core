@@ -814,19 +814,18 @@ class TestAdvancedQueryAPI(TestCase, WithQueryApi):
                           in programs["values"]]))
 
   @ddt.data(
-      (all_models.Control, [all_models.Objective, all_models.Control,
-                            all_models.Market, all_models.Objective]),
-      (all_models.Assessment, [all_models.Control, all_models.Control,
-                               all_models.Market, all_models.Objective]),
-      (all_models.Assessment, [all_models.Issue, all_models.Issue,
-                               all_models.Issue, all_models.Issue]),
-      (all_models.Issue, [all_models.Assessment, all_models.Control,
-                          all_models.Market, all_models.Objective]),
+      (False, all_models.Control, [all_models.Objective, all_models.Control,
+                                   all_models.Market, all_models.Objective]),
+      (True, all_models.Assessment, [all_models.Control, all_models.Control,
+                                     all_models.Market, all_models.Objective]),
+      (True, all_models.Assessment, [all_models.Issue, all_models.Issue,
+                                     all_models.Issue, all_models.Issue]),
+      (True, all_models.Issue, [all_models.Assessment, all_models.Control,
+                                all_models.Market, all_models.Objective]),
   )
   @ddt.unpack
-  def test_search_relevant_to_type(self, base_type, relevant_types):
+  def test_search_relevant_to_type(self, is_scoped, base_type, relevant_types):
     """Test filter with 'relevant to' conditions."""
-    is_scoped = base_type.__name__ in Types.scoped
     audit_data = {}
     if is_scoped:
       audit = factories.AuditFactory()
