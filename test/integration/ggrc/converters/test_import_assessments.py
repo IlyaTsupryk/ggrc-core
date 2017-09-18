@@ -240,7 +240,7 @@ class TestAssessmentImport(TestCase):
     self.import_data(OrderedDict([
         ("object_type", "Assessment"),
         ("Code*", assessment.slug),
-        ("map:control", control.slug),
+        ("map:Control versions", control.slug),
     ]))
     self.assertTrue(db.session.query(
         models.Relationship.get_related_query(
@@ -344,7 +344,7 @@ class TestAssessmentImport(TestCase):
         ("Assignees*", models.Person.query.all()[0].email),
         ("Creators", models.Person.query.all()[0].email),
         ("Title", "Strange title"),
-        ("map:control", control.slug),
+        ("map:Control versions", control.slug),
     ]))
     assessment = models.Assessment.query.filter(
         models.Assessment.slug == slug
@@ -547,7 +547,8 @@ class TestAssessmentExport(TestCase):
         revision_id=revision.id
     )
     db.session.commit()
-    self.assertColumnExportedValue("", assessment, "map:control")
+    self.assertColumnExportedValue("", assessment,
+                                   "map:control versions")
 
   def test_export_assesments_with_map_control(self):
     """Test export assesment with related control instance
@@ -572,7 +573,8 @@ class TestAssessmentExport(TestCase):
     )
     db.session.commit()
     factories.RelationshipFactory(source=snapshot, destination=assessment)
-    self.assertColumnExportedValue(control.slug, assessment, "map:control")
+    self.assertColumnExportedValue(control.slug, assessment,
+                                   "map:control versions")
 
   def test_export_assesments_with_map_control_mirror_relation(self):
     """Test export assesment with related control instance
@@ -597,7 +599,8 @@ class TestAssessmentExport(TestCase):
     )
     db.session.commit()
     factories.RelationshipFactory(destination=snapshot, source=assessment)
-    self.assertColumnExportedValue(control.slug, assessment, "map:control")
+    self.assertColumnExportedValue(control.slug, assessment,
+                                   "map:control versions")
 
   def test_export_assessments_with_filters_and_conflicting_ca_names(self):
     """Test exporting assessments with conflicting custom attribute names."""

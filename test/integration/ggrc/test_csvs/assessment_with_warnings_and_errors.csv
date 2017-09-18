@@ -1,6 +1,6 @@
 Object type,"This needs to be imported after assessment_full_no_warnings
 ",,,These are the expected warnings,,,,,,,,,,
-Assessment,Code*,Audit*,Title*,Error description - non existing column will be ignored,Actual Error message,Notes,State*,Assignees*,Creators*,Finished Date,Verified Date,map:project,map: Market,reference url
+Assessment,Code*,Audit*,Title*,Error description - non existing column will be ignored,Actual Error message,Notes,State*,Assignees*,Creators*,Finished Date,Verified Date,map:project,map: Market versions,reference url
 ,Assessment 2,Audit,Assessment title 2,"you are not verifier, you can not verify this assessment",,notes 2,In Progress,user1@a.com,user2@a.com,7/2/2015,5/12/2016,,,http://i.imgur.com/Lppr247.jpg some invalid title
 ,Assessment 3,Audit,Assessment title 3,"this assessment has changed and can not be verified in the first step, verification will be done only upon re-importing this csv", ,changed notes,In Progress,user1@a.com,user2@a.com,7/3/2015,5/13/2016,,,
 ,Assessment 4,Audit,Assessment title 4,This should work and the state will be changed to verified,,notes 4,In Progress,user1@a.com,user2@a.com,7/4/2015,5/14/2016,,,

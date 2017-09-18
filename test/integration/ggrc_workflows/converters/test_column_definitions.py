@@ -2,14 +2,14 @@
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 from ggrc.converters.import_helper import get_object_column_definitions
-from ggrc.utils.rules import get_mapping_rules, get_unmapping_rules
+from ggrc.utils import rules
 from ggrc.utils import title_from_camelcase
 from ggrc_workflows import models as wf_models
 from integration.ggrc import TestCase
 
 
 def get_mapping_names(class_name):
-  mapping_rules = get_mapping_rules().get(class_name)
+  mapping_rules = rules.get_mapping_rules().get(class_name)
   if mapping_rules is not None:
     pretty_mapping_rules = (title_from_camelcase(r) for r in mapping_rules)
     mapping_names = {"map:{}".format(n) for n in pretty_mapping_rules}
@@ -19,7 +19,7 @@ def get_mapping_names(class_name):
 
 
 def get_unmapping_names(class_name):
-  unmapping_rules = get_unmapping_rules().get(class_name)
+  unmapping_rules = rules.get_unmapping_rules().get(class_name)
   if unmapping_rules is not None:
     pretty_unmapping_rules = (title_from_camelcase(r) for r in unmapping_rules)
     unmapping_names = {"unmap:{}".format(n) for n in pretty_unmapping_rules}

@@ -9,7 +9,7 @@ from collections import defaultdict
 import flask
 from sqlalchemy.sql.schema import UniqueConstraint
 
-from ggrc.utils.rules import get_mapping_rules, get_unmapping_rules
+from ggrc.utils import rules
 from ggrc.utils import title_from_camelcase
 from ggrc.utils import underscore_from_camelcase
 
@@ -302,29 +302,19 @@ class AttributeInfo(object):
     For every direct mapping column generated it also generates an unmapping
     column.
     """
-    from ggrc.snapshotter import rules
-    mapping_rules = get_mapping_rules()
-    all_mappings = mapping_rules.get(object_class.__name__, set())
-    unmapping_rules = get_unmapping_rules()
-    all_unmappings = unmapping_rules.get(object_class.__name__, set())
 
     definitions = {}
-    if object_class.__name__ in rules.Types.scoped | rules.Types.parents:
-      snapshot_mappings = all_mappings & rules.Types.all
-      direct_mappings = all_mappings - rules.Types.all
-      definitions.update(cls._generate_mapping_definition(
-          snapshot_mappings, cls.SNAPSHOT_MAPPING_PREFIX, "map:{}",
-      ))
-    else:
-      direct_mappings = all_mappings
-
-    direct_unmappings = direct_mappings & all_unmappings
-
     definitions.update(cls._generate_mapping_definition(
-        direct_mappings, cls.MAPPING_PREFIX, "map:{}",
+        rules.get_mapping_rules().get(object_class.__name__, set()),
+        cls.MAPPING_PREFIX, "map:{}",
     ))
     definitions.update(cls._generate_mapping_definition(
-        direct_unmappings, cls.UNMAPPING_PREFIX, "unmap:{}",
+        rules.get_snapshot_mapping_rules().get(object_class.__name__, set()),
+        cls.SNAPSHOT_MAPPING_PREFIX, "map:{} versions",
+    ))
+    definitions.update(cls._generate_mapping_definition(
+        rules.get_unmapping_rules().get(object_class.__name__, set()),
+        cls.UNMAPPING_PREFIX, "unmap:{}",
     ))
     return definitions
 

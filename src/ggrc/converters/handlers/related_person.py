@@ -45,10 +45,8 @@ class RelatedPersonColumnHandler(handlers.UserColumnHandler):
 
   def _create_relationship(self, person):
     relation = models.Relationship(
-        source_type=person.type,
-        source_id=person.id,
-        destination_type=self.row_converter.obj.type,
-        destination_id=self.row_converter.obj.id,
+        source=person,
+        destination=self.row_converter.obj,
         context_id=self.row_converter.obj.context_id,
     )
     db.session.add(relation)

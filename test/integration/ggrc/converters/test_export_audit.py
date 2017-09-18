@@ -29,7 +29,10 @@ class TestAuditExport(TestCase):
         # All snapshotable objects should be mapped to Audit + Issue
         # and Assessment
         for type_ in Types.all.union(Types.scoped):
-          if type_ in Types.scoped:
+          if type_ == "Issue":
+            obj = get_model_factory(type_)()
+            factories.RelationshipFactory(source=audit, destination=obj)
+          elif type_ in Types.scoped:
             obj = get_model_factory(type_)(audit=audit)
             factories.RelationshipFactory(source=audit, destination=obj)
           else:
@@ -48,6 +51,10 @@ class TestAuditExport(TestCase):
     }])["Audit"][0]
 
     for type_, slugs in mapped_slugs.items():
-      mapping_name = "map:{}".format(utils.title_from_camelcase(type_))
+      if type_ in Types.all:
+        format_ = "map:{} versions"
+      else:
+        format_ = "map:{}"
+      mapping_name = format_.format(utils.title_from_camelcase(type_))
       self.assertIn(mapping_name, audit_data)
       self.assertEqual(audit_data[mapping_name], "\n".join(sorted(slugs)))

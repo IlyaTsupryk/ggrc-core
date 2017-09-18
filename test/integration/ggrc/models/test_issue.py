@@ -122,6 +122,9 @@ class TestIssueAuditMapping(TestCase):
 
   def test_deny_mapping_to_two_audits(self):
     """Issue can't be mapped to two Audits at once."""
+    issue_stub = self.generator.create_stub(self.issue_unmapped)
+    audit_stubs = [self.generator.create_stub(a) for a in self.other_audits]
+
     response, _ = self.generator.generate_relationship(
         source=self.other_audits[0],
         destination=self.issue_mapped,
@@ -131,11 +134,11 @@ class TestIssueAuditMapping(TestCase):
 
     response = self.generator.api.post(
         all_models.Relationship,
-        [{"source": self.generator.create_stub(self.issue),
-          "destination": self.generator.create_stub(self.other_audits[0]),
+        [{"source": issue_stub,
+          "destination": audit_stubs[0],
           "context": None},
-         {"source": self.generator.create_stub(self.issue),
-          "destination": self.generator.create_stub(self.other_audits[1]),
+         {"source": issue_stub,
+          "destination": audit_stubs[1],
           "context": None}],
     )
     self.assert400(response)
