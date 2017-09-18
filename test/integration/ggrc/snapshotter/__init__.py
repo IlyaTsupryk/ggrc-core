@@ -54,11 +54,6 @@ class SnapshotterBaseTestCase(TestCase):
         }
     })
 
-  @classmethod
-  def refresh_object(cls, obj):
-    """Returns a new instance of a model, fresh and warm from the database."""
-    return obj.query.filter_by(id=obj.id).one()
-
   @staticmethod
   def create_custom_attribute_definitions(cad_definitions=None):
     """Create custom attribute definitions used throughout snapshotter tests"""

@@ -135,11 +135,6 @@ class TestReminderable(TestCase):
     self.assertEqual(len(verifiers), 2)
     return assessment
 
-  @classmethod
-  def refresh_object(cls, obj):
-    """Returns a new instance of a model, fresh and warm from the database."""
-    return obj.query.filter_by(id=obj.id).first()
-
   def change_status(self, obj, status):
     """Change status of an object."""
     self.api_helper.modify_object(obj, {

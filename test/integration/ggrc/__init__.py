@@ -380,3 +380,8 @@ class TestCase(BaseTestCase, object):
     ]
     for role, person in roles.items():
       self.assertTrue((role, person) in acl_person_roles)
+
+  @classmethod
+  def refresh_object(cls, obj, id_=None):
+    """Returns a new instance of a model, fresh and warm from the database."""
+    return obj.query.filter_by(id=obj.id if id_ is None else id_).first()
