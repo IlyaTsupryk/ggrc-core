@@ -100,24 +100,26 @@
           return false;
         },
         showWarning: function () {
-          var isMappedSnapshotable =
+          var isInScopeSrc =
+            utils.Snapshots.isInScopeModel(this.attr('object'));
+          var isSnapshotParentSrc =
+            utils.Snapshots.isSnapshotParent(this.attr('object'));
+          var isSnapshotParentDst =
+            utils.Snapshots.isSnapshotParent(this.attr('type'));
+          var isSnapshotModelSrc =
+            utils.Snapshots.isSnapshotModel(this.attr('object'));
+          var isSnapshotModelDst =
             utils.Snapshots.isSnapshotModel(this.attr('type'));
 
-          var condition;
-          // Never show warning for In Scope Objects
-          if (utils.Snapshots.isInScopeModel(this.attr('object'))) {
-            return false;
-          }
+          var result =
+            // Dont show message if source is inScope model, for example Assessment.
+            !isInScopeSrc &&
+            // Show message if source is snapshotParent and destination is snapshotable.
+            ((isSnapshotParentSrc && isSnapshotModelDst) ||
+            // Show message if destiantion is snapshotParent and source is snapshotable.
+            (isSnapshotParentDst && isSnapshotModelSrc));
 
-          condition =
-            utils.Snapshots.isSnapshotParent(this.attr('object')) ||
-            utils.Snapshots.isSnapshotParent(this.attr('type'));
-
-          if (condition && !isMappedSnapshotable) {
-            return false;
-          }
-
-          return condition;
+          return result;
         },
         updateFreezedConfigToLatest: function () {
           this.attr('freezedConfigTillSubmit', this.attr('currConfig'));
