@@ -10,12 +10,14 @@ child object (e.g. Control, Regulation, ...) and a particular revision.
 
 from logging import getLogger
 
+import sqlalchemy as sa
 from sqlalchemy.sql.expression import tuple_
 from sqlalchemy.sql.expression import bindparam
 
 from ggrc import db
 from ggrc import models
 from ggrc.login import get_current_user_id
+from ggrc.models import all_models
 from ggrc.utils import benchmark
 
 from ggrc.snapshotter.datastructures import Attr
@@ -289,6 +291,7 @@ class SnapshotGenerator(object):
     Returns:
       OperationResponse
     """
+    import ipdb;ipdb.set_trace()
     for_create, for_update = self.analyze()
     create, update = None, None
     created, updated = set(), set()
@@ -305,6 +308,7 @@ class SnapshotGenerator(object):
 
     to_reindex = updated | created
     if not self.dry_run:
+      self._remove_lost_mappings()
       reindex_pairs(to_reindex)
       self._copy_snapshot_relationships()
     return OperationResponse("upsert", True, {
@@ -484,6 +488,62 @@ class SnapshotGenerator(object):
           "user_id": get_current_user_id(),
           "parent_id": parent.id
       })
+
+
+  def _remove_lost_mappings(self):
+    """Remove mappings between snapshots if base objects were unmapped."""
+    source_snap = sa.orm.aliased(all_models.Snapshot, name="source_snap")
+    dest_snap = sa.orm.aliased(all_models.Snapshot, name="dest_snap")
+    source_rel = sa.orm.aliased(all_models.Relationship, name="source_rel")
+    dest_rel = sa.orm.aliased(all_models.Relationship, name="dest_rel")
+
+    parents = {(p.type, p.id) for p in self.parents}
+    snap_rel = db.session.query(
+        all_models.Relationship.id,
+        source_snap.child_type,
+        source_snap.child_id,
+        dest_snap.child_type,
+        dest_snap.child_id,
+    ).join(
+        source_snap, source_snap.id == all_models.Relationship.source_id
+    ).join(
+        dest_snap, dest_snap.id == all_models.Relationship.destination_id
+    ).outerjoin(
+        source_rel,
+        sa.and_(
+            source_rel.source_type == source_snap.child_type,
+            source_rel.source_id == source_snap.child_id,
+            source_rel.destination_type == dest_snap.child_type,
+            source_rel.destination_id == dest_snap.child_id,
+        )
+    ).outerjoin(
+        dest_rel,
+        sa.and_(
+            dest_rel.destination_type == source_snap.child_type,
+            dest_rel.destination_id == source_snap.child_id,
+            dest_rel.source_type == dest_snap.child_type,
+            dest_rel.source_id == dest_snap.child_id,
+        )
+    ).filter(
+        all_models.Relationship.source_type == 'Snapshot',
+        all_models.Relationship.destination_type == 'Snapshot',
+        source_rel.id.is_(None),
+        dest_rel.id.is_(None),
+        source_snap.parent_id,
+
+        # TODO: Move this into source_snap and dest_snap
+        sa.tuple_(
+            source_snap.child_type,
+            source_snap.child_id,
+        ).in_(parents),
+        sa.tuple_(
+            dest_snap.child_type,
+            dest_snap.child_id,
+        ).in_(parents)
+    )
+
+    import ipdb;ipdb.set_trace()
+    ids = snap_rel.all()
 
 
 def create_snapshots(objs, event, revisions=None, _filter=None, dry_run=False):
