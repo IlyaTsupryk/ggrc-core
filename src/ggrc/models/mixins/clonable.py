@@ -4,10 +4,13 @@
 """A mixin for objects that can be cloned"""
 
 import itertools
+
+from ggrc import db
+from ggrc.models import relationship, inflector
 from ggrc.services import signals
 
 
-class Clonable(object):
+class SingleClonable(object):
   """Clonable mixin"""
 
   __lazy_init__ = True
@@ -71,3 +74,63 @@ class Clonable(object):
   def update_attrs(self, values):
     for key, value in values.items():
       setattr(self, key, value)
+
+
+class MultiClonable(object):
+
+  CLONEABLE_CHILDREN = {}
+
+  @classmethod
+  def handle_model_clone(cls, query):
+    source_ids = query.get("sourceObjectIds", [])
+    if not source_ids:
+      return # TODO: Return some response with error
+
+    destination = query.get("destination", {})
+    destination_type = destination.get("type")
+    destination_id = destination.get("id")
+    destination_obj = None
+    if destination_type and destination_id:
+      destination_obj = inflector.get_model(destination_type).query.filter_by(
+          id=destination_id
+      ).first()
+      if not destination_obj:
+        return # TODO: Return some response with error
+
+    mapped_objects = {
+        obj for obj in query.get("mappedObjects", [])
+        if obj in cls.CLONEABLE_CHILDREN
+    }
+    for source_id in source_ids:
+      cls.clone(
+          source=source_id,
+          destination=destination_obj,
+          mapped_objects=mapped_objects,
+      )
+
+  @classmethod
+  def clone(cls, source, destination=None, mapped_objects=None):
+    # TODO: don't grab objects by one, provide source_obj into function
+    # TODO: check if such object exist in db
+    source_object = cls.query.get(source_id)
+    clonned_object = source_object._clone()
+    cls._clone_cads(clonned_object)
+
+    if any(mapped_objects):
+      cls._clone_related_objects(source_object, clonned_object, mapped_objects)
+
+  @classmethod
+  def _clone_related_objects(cls, source_obj, clonned_obj, mapped_objects):
+    for obj in source_obj.related_objects(mapped_objects):
+      related_obj_copy = obj._clone(clonned_obj)
+      db.session.add(relationship.Relationship(
+          source=clonned_obj,
+          destination=related_obj_copy
+      ))
+      cls._clone_cads(related_obj_copy)
+
+  @classmethod
+  def _clone_cads(cls, obj):
+    for cad in obj.custom_attribute_definitions:
+      # pylint: disable=protected-access
+      cad._clone(obj)

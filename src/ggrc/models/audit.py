@@ -25,7 +25,7 @@ from ggrc.models.snapshot import Snapshotable
 
 
 class Audit(Snapshotable,
-            clonable.Clonable,
+            clonable.SingleClonable,
             PublicDocumentable,
             mixins.CustomAttributable,
             Personable,
