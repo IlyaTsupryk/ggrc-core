@@ -129,15 +129,14 @@ def init_query_views(app):
 
 def init_clone_views(app):
   # pylint: disable=unused-variable
-  @app.route('/<model>/clone', methods=['GET', 'POST'])
+  @app.route('/<model>/clone', methods=['POST'])
   @login_required
   def clone_objects(model):
     """Clone object view."""
     try:
-      import ipdb;ipdb.set_trace()
       model_cls = inflector.get_model(model)
       if hasattr(model_cls, "clone"):
-        return model_cls.clone(request.json)
+        return model_cls.handle_model_clone(request.json[0])
       else:
         raise NotImplemented
     except (NotImplementedError, BadQueryException) as exc:

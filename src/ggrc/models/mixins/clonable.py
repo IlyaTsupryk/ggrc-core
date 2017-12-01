@@ -5,6 +5,12 @@
 
 import itertools
 
+import datetime
+
+import sqlalchemy as sa
+from collections import defaultdict
+from werkzeug.exceptions import BadRequest
+
 from ggrc import db
 from ggrc.models import relationship, inflector
 from ggrc.services import signals
@@ -82,55 +88,118 @@ class MultiClonable(object):
 
   @classmethod
   def handle_model_clone(cls, query):
+    from ggrc.query import views
+
+    if not query:
+      return BadRequest()
+    import ipdb;ipdb.set_trace()
+
     source_ids = query.get("sourceObjectIds", [])
     if not source_ids:
-      return # TODO: Return some response with error
+      return BadRequest("sourceObjectIds parameter wasn't provided")
 
-    destination = query.get("destination", {})
-    destination_type = destination.get("type")
-    destination_id = destination.get("id")
-    destination_obj = None
-    if destination_type and destination_id:
-      destination_obj = inflector.get_model(destination_type).query.filter_by(
-          id=destination_id
+    dest_query = query.get("destination", {})
+    destination = None
+    if dest_query and dest_query.get("type") and dest_query.get("id"):
+      destination_cls = inflector.get_model(dest_query.get("type"))
+      destination = destination_cls.query.filter_by(
+          id=dest_query.get("id")
       ).first()
-      if not destination_obj:
-        return # TODO: Return some response with error
 
-    mapped_objects = {
-        obj for obj in query.get("mappedObjects", [])
-        if obj in cls.CLONEABLE_CHILDREN
+    mapped_types = {
+        type_ for type_ in query.get("mappedObjects", [])
+        if type_ in cls.CLONEABLE_CHILDREN
     }
-    for source_id in source_ids:
-      cls.clone(
-          source=source_id,
-          destination=destination_obj,
-          mapped_objects=mapped_objects,
+
+    source_objs = cls.query.options(
+        sa.orm.subqueryload('custom_attribute_definitions'),
+        sa.orm.subqueryload('custom_attribute_values'),
+    ).filter(cls.id.in_(source_ids)).all()
+
+    clonned_objs = {}
+    for source_obj in source_objs:
+      clonned_objs[source_obj] = cls._clone_obj(source_obj, destination)
+
+    for target, mapped_obj in cls._collect_mapped(source_objs, mapped_types):
+      clonned_objs[mapped_obj] = cls._clone_obj(mapped_obj, target)
+
+    db.session.flush()
+
+    for source, clonned in clonned_objs.items():
+      cls._clone_cads(source, clonned)
+
+    db.session.commit()
+
+    collections = []
+    for obj in clonned_objs:
+      collections.append(
+          views.build_collection_representation(cls, obj.log_json())
+      )
+    return views.json_success_response(collections, datetime.datetime.now())
+
+  @classmethod
+  def _clone_obj(cls, source, target=None):
+    clonned_object = source._clone()
+    if target:
+      db.session.add(relationship.Relationship(
+          source=target,
+          destination=clonned_object,
+      ))
+    return clonned_object
+
+  @classmethod
+  def _clone_cads(cls, source, target):
+    for cad in source.custom_attribute_definitions:
+      # Copy only local CADs
+      if cad.definition_id:
+        # pylint: disable=protected-access
+        cad._clone(target)
+
+  @classmethod
+  def _collect_mapped(cls, source_objs, mapped_types):
+    if not mapped_types:
+      return []
+
+    source_ids = {obj.id: obj for obj in source_objs}
+    related_data = db.session.query(
+        relationship.Relationship.source_id,
+        relationship.Relationship.destination_type,
+        relationship.Relationship.destination_id,
+    ).filter(
+        relationship.Relationship.source_type == cls.__name__,
+        relationship.Relationship.source_id.in_(source_ids),
+        relationship.Relationship.destination_type.in_(mapped_types)
+    ).union_all(
+        db.session.query(
+            relationship.Relationship.destination_id,
+            relationship.Relationship.source_type,
+            relationship.Relationship.source_id,
+        ).filter(
+            relationship.Relationship.destination_type == cls.__name__,
+            relationship.Relationship.destination_id.in_(source_ids),
+            relationship.Relationship.source_type.in_(mapped_types)
+        )
+    ).all()
+
+    related_type_ids = defaultdict(set)
+    for _, related_type, related_id in related_data:
+      related_type_ids[related_type].add(related_id)
+
+    related_objs = defaultdict(dict)
+    # Make related object loading for each type
+    for type_, ids in related_type_ids.items():
+      related_model = inflector.get_model(type_)
+      related_query = related_model.query.options(
+          sa.orm.subqueryload('custom_attribute_definitions'),
+      ).filter(related_model.id.in_(ids))
+      for related in related_query:
+        related_objs[type_][related.id] = related
+
+    source_related_objs = []
+    for src_id, rel_type, rel_id in related_data:
+      source_related_objs.append(
+          (source_ids[src_id], related_objs[rel_type][rel_id])
       )
 
-  @classmethod
-  def clone(cls, source, destination=None, mapped_objects=None):
-    # TODO: don't grab objects by one, provide source_obj into function
-    # TODO: check if such object exist in db
-    source_object = cls.query.get(source_id)
-    clonned_object = source_object._clone()
-    cls._clone_cads(clonned_object)
+    return source_related_objs
 
-    if any(mapped_objects):
-      cls._clone_related_objects(source_object, clonned_object, mapped_objects)
-
-  @classmethod
-  def _clone_related_objects(cls, source_obj, clonned_obj, mapped_objects):
-    for obj in source_obj.related_objects(mapped_objects):
-      related_obj_copy = obj._clone(clonned_obj)
-      db.session.add(relationship.Relationship(
-          source=clonned_obj,
-          destination=related_obj_copy
-      ))
-      cls._clone_cads(related_obj_copy)
-
-  @classmethod
-  def _clone_cads(cls, obj):
-    for cad in obj.custom_attribute_definitions:
-      # pylint: disable=protected-access
-      cad._clone(obj)
