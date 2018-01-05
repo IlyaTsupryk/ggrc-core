@@ -520,10 +520,9 @@ def copy_snapshot_test_plan(objects, sources):
 
       # Test plan of snapshotted object should be copied to
       # Assessment test plan in case of proper snapshot type
-      # and if copyAssessmentProcedure flag was sent, it should
-      # be set to True
+      # and if test_plan_procedure was set to True
       if asmnt.assessment_type == snapshot.child_type and \
-         src.get("copyAssessmentProcedure", True):
+         asmnt.test_plan_procedure:
         assessment.copy_snapshot_plan(asmnt, snapshot)
 
 
