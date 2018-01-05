@@ -506,9 +506,9 @@ def handle_relationship_delete(relationship):
     ).delete(synchronize_session='fetch')
 
 
-def copy_snapshot_test_plan(objects, sources):
+def copy_snapshot_test_plan(objects):
   """Append snapshot test plan into assessment test plan"""
-  for obj, src in zip(objects, sources):
+  for obj in objects:
     if (obj.source_type == "Assessment" and
         obj.destination_type == "Snapshot") or (
         obj.source_type == "Snapshot" and
@@ -520,10 +520,9 @@ def copy_snapshot_test_plan(objects, sources):
 
       # Test plan of snapshotted object should be copied to
       # Assessment test plan in case of proper snapshot type
-      # and if copyAssessmentProcedure flag was sent, it should
-      # be set to True
+      # and if test_plan_procedure was set to True
       if asmnt.assessment_type == snapshot.child_type and \
-         src.get("copyAssessmentProcedure", True):
+         asmnt.test_plan_procedure:
         assessment.copy_snapshot_plan(asmnt, snapshot)
 
 
@@ -581,4 +580,4 @@ def init_hook():  # noqa
   def handle_asmnt_plan(sender, objects=None, sources=None, **kwargs):
     """Handle assessment test plan"""
     # pylint: disable=unused-argument
-    copy_snapshot_test_plan(objects, sources)
+    copy_snapshot_test_plan(objects)

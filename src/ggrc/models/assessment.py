@@ -106,7 +106,7 @@ class Assessment(Roleable, statusable.Statusable, AuditRelationship,
   assessment_type = deferred(
       db.Column(db.String, nullable=False, server_default="Control"),
       "Assessment")
-  # whether to use the object test plan on stanpshot mapping
+  # whether to use the object test plan on snapshot mapping
   test_plan_procedure = db.Column(db.Boolean, nullable=False, default=True)
 
   @declared_attr

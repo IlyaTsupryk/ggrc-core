@@ -72,6 +72,7 @@ def _handle_assessment(assessment, src, templates, audits):
     assessment.test_plan = snapshot.revision.content.get("test_plan")
     return
 
+  assessment.test_plan_procedure = template.test_plan_procedure
   assessment.test_plan = template.procedure_description
   if template.test_plan_procedure:
     copy_snapshot_plan(assessment, snapshot)
