@@ -106,6 +106,8 @@ class Assessment(Roleable, statusable.Statusable, AuditRelationship,
   assessment_type = deferred(
       db.Column(db.String, nullable=False, server_default="Control"),
       "Assessment")
+  # whether to use the object test plan on stanpshot mapping
+  test_plan_procedure = db.Column(db.Boolean, nullable=False, default=True)
 
   @declared_attr
   def object_level_definitions(cls):  # pylint: disable=no-self-argument
@@ -142,6 +144,7 @@ class Assessment(Roleable, statusable.Statusable, AuditRelationship,
       'operationally',
       'audit',
       'assessment_type',
+      'test_plan_procedure',
       reflection.Attribute('issue_tracker', create=False, update=False),
       reflection.Attribute('archived', create=False, update=False),
       reflection.Attribute('folder', create=False, update=False),
