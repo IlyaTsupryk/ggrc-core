@@ -16,16 +16,16 @@ class TestAuditorPropagation(base.TestAuditACLPropagation):
           "Audit": {
               "create_audit": False,
               "read": True,
-              "update": True,
-              "delete": True,
+              "update": False,
+              "delete": False,
           },
           "Assessment": {
               "create_assessment": True,
               "generate_asmnt_without_template": True,
               "generate_asmnt_with_template": True,
               "read": True,
-              "update": True,
-              "delete": True,
+              "update": False,
+              "delete": False,
           },
           "Assessment Template": {
               "create_assessment_template": False,
@@ -35,16 +35,16 @@ class TestAuditorPropagation(base.TestAuditACLPropagation):
           "Audit": {
               "create_audit": False,
               "read": True,
-              "update": True,
-              "delete": True,
+              "update": False,
+              "delete": False,
           },
           "Assessment": {
               "create_assessment": True,
               "generate_asmnt_without_template": True,
               "generate_asmnt_with_template": True,
               "read": True,
-              "update": True,
-              "delete": True,
+              "update": False,
+              "delete": False,
           },
           "Assessment Template": {
               "create_assessment_template": False,
@@ -81,12 +81,17 @@ class TestAuditorPropagation(base.TestAuditACLPropagation):
 
   def setup_base_objects(self, global_role):
     with factories.single_commit():
+      if global_role is not None:
+        person = self.get_user_object(global_role)
+      else:
+        person = self.get_user_object("Administrator")
+
       self.program_id = factories.ProgramFactory().id
       self.audit = factories.AuditFactory(
           program_id=self.program_id,
           access_control_list=[{
               "ac_role": self.auditor_acr,
-              "person": self.people[global_role]
+              "person": person,
           }]
       )
       self.audit_id = self.audit.id
