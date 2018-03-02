@@ -20,6 +20,7 @@ class TestAuditorPropagation(base.TestAuditACLPropagation):
               "delete": False,
               "clone": False,
               "read_revisions": True,
+              "map_snapshot": False,
           },
           "Assessment": {
               "create_assessment": True,
@@ -27,6 +28,7 @@ class TestAuditorPropagation(base.TestAuditACLPropagation):
               "read": True,
               "update": False,
               "delete": False,
+              "map_snapshot": False,
           },
           "Assessment Template": {
               "create_assessment_template": False,
@@ -40,6 +42,7 @@ class TestAuditorPropagation(base.TestAuditACLPropagation):
               "delete": False,
               "clone": False,
               "read_revisions": True,
+              "map_snapshot": False,
           },
           "Assessment": {
               "create_assessment": True,
@@ -47,6 +50,7 @@ class TestAuditorPropagation(base.TestAuditACLPropagation):
               "read": True,
               "update": False,
               "delete": False,
+              "map_snapshot": False,
           },
           "Assessment Template": {
               "create_assessment_template": False,
@@ -60,6 +64,7 @@ class TestAuditorPropagation(base.TestAuditACLPropagation):
               "delete": True,
               "clone": True,
               "read_revisions": True,
+              "map_snapshot": True,
           },
           "Assessment": {
               "create_assessment": True,
@@ -67,6 +72,7 @@ class TestAuditorPropagation(base.TestAuditACLPropagation):
               "read": True,
               "update": True,
               "delete": True,
+              "map_snapshot": True,
           },
           "Assessment Template": {
               "create_assessment_template": True,
@@ -102,6 +108,7 @@ class TestAuditorPropagation(base.TestAuditACLPropagation):
       self.template_id = factories.AssessmentTemplateFactory(
           audit=self.audit,
       ).id
+      self.assessment_id = factories.AssessmentFactory(audit=self.audit).id
 
   @helpers.unwrap(PERMISSIONS)
   def test_CRUD(self, role, model, action_str, expected_result):

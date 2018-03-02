@@ -21,14 +21,16 @@ class TestAssigneesPropagation(base.TestAuditACLPropagation):
           "Assessment": {
               "read": True,
               "update": True,
-              "delete": True,
+              "delete": False,
+              "map_snapshot": False,
           },
       },
       "Reader": {
           "Assessment": {
               "read": True,
               "update": True,
-              "delete": True,
+              "delete": False,
+              "map_snapshot": False,
           },
       },
       "Editor": {
@@ -36,6 +38,7 @@ class TestAssigneesPropagation(base.TestAuditACLPropagation):
               "read": True,
               "update": True,
               "delete": True,
+              "map_snapshot": True,
           },
       },
   }
@@ -50,6 +53,11 @@ class TestAssigneesPropagation(base.TestAuditACLPropagation):
 
   def setup_base_objects(self, global_role):
     with factories.single_commit():
+      if global_role is not None:
+        person = self.get_user_object(global_role)
+      else:
+        person = self.get_user_object("Administrator")
+
       self.program_id = factories.ProgramFactory().id
       self.audit = factories.AuditFactory(program_id=self.program_id)
       self.audit_id = self.audit.id
@@ -57,9 +65,10 @@ class TestAssigneesPropagation(base.TestAuditACLPropagation):
           audit=self.audit,
           access_control_list=[{
               "ac_role": self.assignees_acr,
-              "person": self.people[global_role]
+              "person": person
           }]
       )
+      self.assessment_id = self.assessment.id
       self.control = factories.ControlFactory()
       self.template_id = factories.AssessmentTemplateFactory(
           audit=self.audit

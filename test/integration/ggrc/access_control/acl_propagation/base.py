@@ -189,6 +189,27 @@ class TestAuditACLPropagation(TestACLPropagation):
       )
     return responses
 
+  def map_snapshot(self, model, role):
+    self.setup_base_objects(role)
+    snapshot_id = self._create_snapshots(self.audit, [self.control])[0].id
+    self.api.set_user(self.get_user_object(role))
+    id_name = "{}_id".format(model.lower())
+    id = getattr(self, id_name)
+    response = self.api.post(all_models.Relationship, {
+        "relationship": {
+            "source": {
+                "id": id,
+                "type": model
+            },
+            "destination": {
+                "id": snapshot_id,
+                "type": "Snapshot"
+            },
+            "context": None
+        }
+    })
+    return response
+
   def runtest(self, role, model, action_str, expected_result):
     action = getattr(self, action_str, None)
     if not action:
