@@ -7,13 +7,14 @@ import ddt
 
 from ggrc.models import all_models
 from integration.ggrc import Api
+from integration.ggrc.access_control import rbac_factories
 from integration.ggrc.access_control.acl_propagation import base
 from integration.ggrc.models import factories
 from integration.ggrc.utils import helpers
 
 
 @ddt.ddt
-class TestAssigneesPropagation(base.TestAuditACLPropagation):
+class TestAssigneesPropagation(base.TestACLPropagation):
   """Test Assignees role permissions propagation"""
 
   PERMISSIONS = {
@@ -23,6 +24,7 @@ class TestAssigneesPropagation(base.TestAuditACLPropagation):
               "update": True,
               "delete": False,
               "map_snapshot": False,
+              "read_revisions": True,
           },
       },
       "Reader": {
@@ -31,6 +33,7 @@ class TestAssigneesPropagation(base.TestAuditACLPropagation):
               "update": True,
               "delete": False,
               "map_snapshot": False,
+              "read_revisions": True,
           },
       },
       "Editor": {
@@ -39,42 +42,37 @@ class TestAssigneesPropagation(base.TestAuditACLPropagation):
               "update": True,
               "delete": True,
               "map_snapshot": True,
+              "read_revisions": True,
           },
       },
   }
 
   def setUp(self):
     super(TestAssigneesPropagation, self).setUp()
+    self.api = Api()
     self.assignees_acr = all_models.AccessControlRole.query.filter_by(
         name="Assignees"
     ).first()
-    self.api = Api()
     self.setup_people()
 
-  def setup_base_objects(self, global_role):
-    with factories.single_commit():
-      if global_role is not None:
-        person = self.get_user_object(global_role)
-      else:
-        person = self.get_user_object("Administrator")
-
-      self.program_id = factories.ProgramFactory().id
-      self.audit = factories.AuditFactory(program_id=self.program_id)
-      self.audit_id = self.audit.id
-      self.assessment = factories.AssessmentFactory(
-          audit=self.audit,
-          access_control_list=[{
-              "ac_role": self.assignees_acr,
-              "person": person
-          }]
-      )
-      self.assessment_id = self.assessment.id
-      self.control = factories.ControlFactory()
-      self.template_id = factories.AssessmentTemplateFactory(
-          audit=self.audit
-      ).id
-
   @helpers.unwrap(PERMISSIONS)
-  def test_CRUD(self, role, model, action_str, expected_result):
+  def test_CRUD(self, role, model, action_name, expected_result):
     """Test {2} for {1} under Assignee {0}"""
-    self.runtest(role, model, action_str, expected_result)
+    audit_id = factories.AuditFactory().id
+    assessment_id = factories.AssessmentFactory(
+        audit_id=audit_id,
+        access_control_list=[{
+            "ac_role": self.assignees_acr,
+            "person": self.get_user_object(role)
+        }]
+    ).id
+    rbac_factory = rbac_factories.get_factory(model)(
+        audit_id, assessment_id, self.get_user_object(role)
+    )
+    action = getattr(rbac_factory, action_name, None)
+    if not action:
+      raise NotImplementedError(
+          "Action {} is not implemented for this test.".format(action_name)
+      )
+
+    self.assert_result(action(), expected_result)

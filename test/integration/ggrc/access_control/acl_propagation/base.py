@@ -2,6 +2,7 @@
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test Access Control roles propagation base class"""
+from ggrc import db
 from ggrc.models import all_models, get_model
 from integration.ggrc import TestCase
 from integration.ggrc.models import factories
@@ -16,6 +17,8 @@ class TestACLPropagation(TestCase):
 
   STATUS_SUCCESS = [200, 201]
   STATUS_FORBIDDEN = [403,]
+
+  TEST_ROLE = None
 
   def get_user_object(self, role_name):
     return all_models.Person.query.get(self.people_ids[role_name])
@@ -55,7 +58,7 @@ class TestAuditACLPropagation(TestACLPropagation):
   def setup_base_objects(self, global_role):
     raise NotImplementedError()
 
-  def create_audit(self, model, role=None):
+  def create(self, model, role=None):
     self.setup_base_objects(role)
     if role:
       self.api.set_user(self.get_user_object(role))
@@ -96,68 +99,24 @@ class TestAuditACLPropagation(TestACLPropagation):
         }
     })
 
-  def generate(self, model, role):
-    self.setup_base_objects(role)
-    snapshot_id = self._create_snapshots(self.audit, [self.control])[0].id
-    self.api.set_user(self.get_user_object(role))
-    responses = []
-    asmnt_data = {
-        "assessment": {
-            "_generated": True,
-            "audit": {
-                "id": self.audit_id,
-                "type": "Audit"
-            },
-            "object": {
-                "id": snapshot_id,
-                "type": "Snapshot"
-            },
-            "context": None,
-            "title": "New assessment",
-        }
-    }
-    responses.append(self.api.post(all_models.Assessment, asmnt_data))
-
-    asmnt_data["assessment"]["template"] = {
-        "id": self.template_id,
-        "type": "AssessmentTemplate"
-    }
-    responses.append(self.api.post(all_models.Assessment, asmnt_data))
-    return responses
-
-  def create_object(self, model_name):
-    method_name = "create_{}".format(model_name.lower())
-    bound_method = getattr(self, method_name)
-    if not bound_method:
-      raise Exception("Method for creation '{}' does not implemented".
-                      format(model_name))
-
-    response = bound_method(model_name)
-    if response.status_code in self.STATUS_FORBIDDEN:
-      raise Exception("Can't create '{}' object. '{}' error".
-                      format(model_name, response.status))
-    return response.json.get(model_name.lower(), {}).get("id")
-
   def read(self, model, role):
     """Test access to model endpoint."""
     self.api.set_user(self.get_user_object(role))
-    model_class = get_model(model)
-    # ToDo: Check reading of single object also
-    return self.api.get_query(model_class, "")
+    audit = all_models.Audit.query.get(self.audit_id)
+    responses = []
+    responses.append(self.api.get_query(all_models.Audit, ""))
+    responses.append(self.api.get_query(all_models.Audit, audit.id))
+    return responses
 
   def update(self, model, role):
-    obj_id = self.create_object(model)
     self.api.set_user(self.get_user_object(role))
-    model_class = get_model(model)
-    obj = model_class.query.get(obj_id)
-    return self.api.put(obj, {"title": factories.random_str()})
+    audit = all_models.Audit.query.get(self.audit_id)
+    return self.api.put(audit, {"title": factories.random_str()})
 
   def delete(self, model, role):
-    obj_id = self.create_object(model)
     self.api.set_user(self.get_user_object(role))
-    model_class = get_model(model)
-    obj = model_class.query.get(obj_id)
-    return self.api.delete(obj)
+    audit = all_models.Audit.query.get(self.audit_id)
+    return self.api.delete(audit)
 
   def clone(self, model, role):
     self.setup_base_objects(role)
@@ -174,46 +133,120 @@ class TestAuditACLPropagation(TestACLPropagation):
         }
     })
 
-  def read_revisions(self, model, role):
-    self.setup_base_objects(role)
-    self.api.set_user(self.get_user_object(role))
-    model_class = get_model(model)
-    responses = []
-    for query in ["source_type={}&source_id={}",
-                  "destination_type={}&destination_id={}",
-                  "resource_type={}&resource_id={}"]:
-      id_name = "{}_id".format(model.lower())
-      id = getattr(self, id_name)
-      responses.append(
-          self.api.get_query(model_class, query.format(model, id))
-      )
-    return responses
 
-  def map_snapshot(self, model, role):
-    self.setup_base_objects(role)
-    snapshot_id = self._create_snapshots(self.audit, [self.control])[0].id
-    self.api.set_user(self.get_user_object(role))
-    id_name = "{}_id".format(model.lower())
-    id = getattr(self, id_name)
-    response = self.api.post(all_models.Relationship, {
-        "relationship": {
-            "source": {
-                "id": id,
-                "type": model
-            },
-            "destination": {
-                "id": snapshot_id,
-                "type": "Snapshot"
-            },
-            "context": None
-        }
-    })
-    return response
+class TestAssessmentACLPropagation(TestACLPropagation):
 
-  def runtest(self, role, model, action_str, expected_result):
-    action = getattr(self, action_str, None)
-    if not action:
-      raise NotImplementedError(
-        "Action {} is not implemented for this test.".format(action_str)
+  # def setup_audit(self, global_role):
+  #
+  #   self.asmnt_acr = all_models.AccessControlRole.query.filter_by(
+  #       name=self.TEST_ROLE
+  #   ).first()
+  #
+  #   with factories.single_commit():
+  #     person = self.get_user_object(global_role)
+  #
+  #     self.program_id = factories.ProgramFactory().id
+  #     self.audit = factories.AuditFactory(
+  #         program_id=self.program_id,
+  #         access_control_list=[{
+  #             "ac_role": self.asmnt_acr,
+  #             "person": person,
+  #         }]
+  #     )
+  #     self.audit_id = self.audit.id
+  #     # self.control = factories.ControlFactory()
+  #     # self.template_id = factories.AssessmentTemplateFactory(
+  #     #     audit=self.audit,
+  #     # ).id
+  #     # self.assessment_id = factories.AssessmentFactory(audit=self.audit).id
+
+  def setup_assessment(self, global_role):
+    self.asmnt_acr = all_models.AccessControlRole.query.filter_by(
+          name=self.TEST_ROLE
+      ).first()
+
+    with factories.single_commit():
+      self.program_id = factories.ProgramFactory().id
+      self.audit = factories.AuditFactory(program_id=self.program_id)
+      self.audit_id = self.audit.id
+      self.assessment = factories.AssessmentFactory(
+        audit=self.audit,
+        access_control_list=[{
+          "ac_role": self.asmnt_acr,
+          "person": self.get_user_object(global_role)
+        }]
       )
-    self.assert_result(action(model, role), expected_result)
+      self.assessment_id = self.assessment.id
+      self.control = factories.ControlFactory()
+      self.template_id = factories.AssessmentTemplateFactory(
+        audit=self.audit
+      ).id
+
+  # def create(self, model, role):
+  #   self.setup_assessment(role)
+  #   self.api.set_user(self.get_user_object(role))
+  #   return self.api.post(all_models.Assessment, {
+  #       "assessment": {
+  #           "title": "New Assessment",
+  #           "context": None,
+  #           "audit": {"id": self.audit_id},
+  #       },
+  #   })
+  #
+  # def generate(self, model, role):
+  #   self.setup_assessment(role)
+  #   snapshot_id = self._create_snapshots(self.audit, [self.control])[0].id
+  #   self.api.set_user(self.get_user_object(role))
+  #
+  #   responses = []
+  #   asmnt_data = {
+  #       "assessment": {
+  #           "_generated": True,
+  #           "audit": {
+  #               "id": self.audit_id,
+  #               "type": "Audit"
+  #           },
+  #           "object": {
+  #               "id": snapshot_id,
+  #               "type": "Snapshot"
+  #           },
+  #           "context": None,
+  #           "title": "New assessment",
+  #       }
+  #   }
+  #   responses.append(self.api.post(all_models.Assessment, asmnt_data))
+  #
+  #   asmnt_data["assessment"]["template"] = {
+  #       "id": self.template_id,
+  #       "type": "AssessmentTemplate"
+  #   }
+  #   responses.append(self.api.post(all_models.Assessment, asmnt_data))
+  #   return responses
+  #
+  # def read(self, model, role):
+  #   """Test access to model endpoint."""
+  #   self.setup_assessment(role)
+  #   asmnt_id = factories.AssessmentFactory(audit=self.audit).id
+  #   self.api.set_user(self.get_user_object(role))
+  #
+  #   responses = []
+  #   responses.append(self.api.get_query(all_models.Assessment, ""))
+  #   #responses.append(self.api.get_query(all_models.Assessment, asmnt_id))
+  #   return responses
+  #
+  # def update(self, model, role):
+  #   self.setup_assessment(role)
+  #   self.api.set_user(self.get_user_object(role))
+  #
+  #   asmnt = all_models.Assessment.query.get(self.assessment_id)
+  #   return self.api.put(asmnt, {"title": factories.random_str()})
+  #
+  # def delete(self, model,role):
+  #   self.setup_assessment(role)
+  #   self.api.set_user(self.get_user_object(role))
+  #
+  #   asmnt = all_models.Assessment.query.get(self.assessment_id)
+  #   return self.api.delete(asmnt)
+  #
+  # def base_action(self, model, role):
+  #
