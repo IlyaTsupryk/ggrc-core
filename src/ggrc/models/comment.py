@@ -114,16 +114,32 @@ class Commentable(object):
   @declared_attr
   def comments(cls):  # pylint: disable=no-self-argument
     """Comments related to self via Relationship table."""
-    comment_id = case(
-        [(Relationship.destination_type == "Comment",
-          Relationship.destination_id)],
-        else_=Relationship.source_id,
-    )
-    commentable_id = case(
-        [(Relationship.destination_type == "Comment",
-          Relationship.source_id)],
-        else_=Relationship.destination_id,
-    )
+    comment_id = case([
+        (
+            Relationship.destination_type == "Comment",
+            Relationship.destination_id
+        ),
+        (
+            Relationship.source_type == "Comment",
+            Relationship.source_id
+        )
+    ])
+    commentable_id = case([
+        (
+            sa.and_(
+                Relationship.source_type == cls.__name__,
+                Relationship.destination_type == "Comment",
+            ),
+            Relationship.source_id
+        ),
+        (
+            sa.and_(
+                Relationship.source_type == "Comment",
+                Relationship.destination_type == cls.__name__,
+            ),
+            Relationship.destination_id
+        ),
+    ])
 
     return db.relationship(
         Comment,
