@@ -205,3 +205,21 @@ def get_benchmark():
     return DebugBenchmark
   else:
     return BenchmarkContextManager
+
+
+class MemoryBenchmark(object):
+  def __init__(self):
+    if not hasattr(MemoryBenchmark, "hp"):
+      from guppy import hpy
+      MemoryBenchmark.hp = hpy()
+      MemoryBenchmark.hp.setrelheap()
+
+  def __enter__(self):
+    pass
+
+  def __exit__(self, exc_type, exc_value, exc_trace):
+    h = MemoryBenchmark.hp.heap()
+    #import ipdb;ipdb.set_trace()
+    print "\n", "Total memory consumption is: %s Mb" % str(h.size/1024/1024), "\n"
+    #print h[0].referents, "\n"
+    #print h[0].byvia
