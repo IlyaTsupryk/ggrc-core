@@ -43,6 +43,7 @@ from ggrc.services.common import inclusion_filter
 from ggrc.query import views as query_views
 from ggrc.snapshotter import rules
 from ggrc.snapshotter import indexer as snapshot_indexer
+from ggrc.utils.benchmarks import MemoryBenchmark
 from ggrc.views import converters
 from ggrc.views import cron
 from ggrc.views import filters
@@ -172,31 +173,36 @@ def start_update_audit_issues(audit_id, message):
 def do_reindex():
   """Update the full text search index."""
 
-  indexer = get_indexer()
-  indexed_models = {
-      m.__name__: m for m in all_models.all_models
-      if issubclass(m, mixin.Indexed) and m.REQUIRED_GLOBAL_REINDEX
-  }
-  people_query = db.session.query(all_models.Person.id,
-                                  all_models.Person.name,
-                                  all_models.Person.email)
-  indexer.cache["people_map"] = {p.id: (p.name, p.email) for p in people_query}
-  indexer.cache["ac_role_map"] = dict(db.session.query(
-      all_models.AccessControlRole.id,
-      all_models.AccessControlRole.name,
-  ))
+  with MemoryBenchmark():
+    indexer = get_indexer()
+    indexed_models = {
+        m.__name__: m for m in all_models.all_models
+        if issubclass(m, mixin.Indexed) and m.REQUIRED_GLOBAL_REINDEX
+    }
+    people_query = db.session.query(all_models.Person.id,
+                                    all_models.Person.name,
+                                    all_models.Person.email)
+  with MemoryBenchmark():
+    indexer.cache["people_map"] = {p.id: (p.name, p.email) for p in people_query}
+    indexer.cache["ac_role_map"] = dict(db.session.query(
+        all_models.AccessControlRole.id,
+        all_models.AccessControlRole.name,
+    ))
+
   for model_name in sorted(indexed_models.keys()):
     logger.info("Updating index for: %s", model_name)
     with benchmark("Create records for %s" % model_name):
       model = indexed_models[model_name]
-      ids = [obj.id for obj in model.query]
-      ids_count = len(ids)
+      with MemoryBenchmark():
+        ids = [obj.id for obj in model.query]
+        ids_count = len(ids)
       handled_ids = 0
       for ids_chunk in utils.list_chunks(ids):
-        handled_ids += len(ids_chunk)
-        logger.info("%s: %s / %s", model_name, handled_ids, ids_count)
-        model.bulk_record_update_for(ids_chunk)
-        db.session.commit()
+        with MemoryBenchmark():
+          handled_ids += len(ids_chunk)
+          logger.info("%s: %s / %s", model_name, handled_ids, ids_count)
+          model.bulk_record_update_for(ids_chunk)
+          db.session.commit()
 
   indexer.invalidate_cache()
 

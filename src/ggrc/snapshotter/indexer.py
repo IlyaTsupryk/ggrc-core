@@ -111,6 +111,10 @@ def get_searchable_attributes(attributes, cads, content):
 
 def reindex():
   """Reindex all snapshots."""
+  from guppy import hpy
+  hp = hpy()
+  hp.setrelheap()
+
   columns = db.session.query(
       models.Snapshot.parent_type,
       models.Snapshot.parent_id,
@@ -125,6 +129,11 @@ def reindex():
     pairs = {Pair.from_4tuple(p) for p in query_chunk}
     reindex_pairs(pairs)
     db.session.commit()
+
+  import ipdb;ipdb.set_trace()
+  h = hp.heap()
+  print h[0].referents, "\n"
+  print h[0].byvia
 
 
 def reindex_snapshots(snapshot_ids):
