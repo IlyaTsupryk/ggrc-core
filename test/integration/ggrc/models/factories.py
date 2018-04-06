@@ -500,6 +500,12 @@ class ProjectFactory(TitledFactory):
     model = all_models.Project
 
 
+class HelpFactory(TitledFactory):
+
+  class Meta:
+    model = all_models.Help
+
+
 class ImportExportFactory(ModelFactory):
 
   class Meta:
@@ -523,17 +529,19 @@ def get_model_factory(model_name):
       "Clause": ClauseFactory,
       "Contract": ContractFactory,
       "Control": ControlFactory,
-      "TaskGroupFactory": wf_factories.TaskGroupFactory,
-      "TaskGroupObjectFactory": wf_factories.TaskGroupObjectFactory,
-      "TaskGroupTaskFactory": wf_factories.TaskGroupTaskFactory,
-      "CycleFactory": wf_factories.CycleFactory,
-      "CycleTaskGroupFactory": wf_factories.CycleTaskGroupFactory,
-      "CycleTaskFactory": wf_factories.CycleTaskFactory,
-      "CycleTaskEntryFactory": wf_factories.CycleTaskEntryFactory,
+      "Directive": DirectiveFactory,
+      "TaskGroup": wf_factories.TaskGroupFactory,
+      "TaskGroupObject": wf_factories.TaskGroupObjectFactory,
+      "TaskGroupTask": wf_factories.TaskGroupTaskFactory,
+      "Cycle": wf_factories.CycleFactory,
+      "CycleTaskGroup": wf_factories.CycleTaskGroupFactory,
+      "CycleTaskGroupObjectTask": wf_factories.CycleTaskFactory,
+      "CycleTaskEntry": wf_factories.CycleTaskEntryFactory,
       "DataAsset": DataAssetFactory,
       "Facility": FacilityFactory,
       "Issue": IssueFactory,
       "IssueTrackerIssue": IssueTrackerIssueFactory,
+      "Help": HelpFactory,
       "Label": LabelFactory,
       "ObjectLabel": ObjectLabelFactory,
       "Market": MarketFactory,
