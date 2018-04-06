@@ -491,7 +491,9 @@ class Slugged(Base):
     return ()
 
   # REST properties
-  _api_attrs = reflection.ApiAttributes('slug')
+  _api_attrs = reflection.ApiAttributes(
+      reflection.Attribute('slug', create=False, update=False),
+  )
   _fulltext_attrs = ['slug']
   _sanitize_html = ['slug']
   _aliases = {
