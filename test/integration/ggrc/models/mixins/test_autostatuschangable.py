@@ -192,8 +192,6 @@ class TestFirstClassAttributes(TestMixinAutoStatusChangeableBase):
       ('notes', 'new note', models.Assessment.FINAL_STATE),
       ('description', 'some description', models.Assessment.DONE_STATE),
       ('description', 'some description', models.Assessment.FINAL_STATE),
-      ('slug', 'some code', models.Assessment.DONE_STATE),
-      ('slug', 'some code', models.Assessment.FINAL_STATE),
       ('start_date', '2020-01-01', models.Assessment.DONE_STATE),
       ('start_date', '2020-01-01', models.Assessment.FINAL_STATE),
       ('design', 'Effective', models.Assessment.DONE_STATE),

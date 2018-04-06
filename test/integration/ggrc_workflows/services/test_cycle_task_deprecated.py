@@ -23,7 +23,7 @@ class TestCycleTaskDeprecated(TestCase):
 
   def test_redefine_status(self):
     """Test cycle task create and change status to Deprecated."""
-    cycle_task = factories.get_model_factory("CycleTaskFactory")()
+    cycle_task = factories.get_model_factory("CycleTaskGroupObjectTask")()
 
     with freeze_time("2017-01-25"):
       self.api.modify_object(cycle_task, {
@@ -39,7 +39,7 @@ class TestCycleTaskDeprecated(TestCase):
 
   def test_keep_date_unchanged(self):
     """Test set status to Deprecated, and then set status to Finished."""
-    cycle_task = factories.get_model_factory("CycleTaskFactory")()
+    cycle_task = factories.get_model_factory("CycleTaskGroupObjectTask")()
 
     with freeze_time("2017-01-25"):
       self.api.modify_object(cycle_task, {
@@ -61,7 +61,7 @@ class TestCycleTaskDeprecated(TestCase):
 
   def test_repeat_deprecated_state(self):
     """Test updating of last deprecated date by multiply changing of status."""
-    cycle_task = factories.get_model_factory("CycleTaskFactory")()
+    cycle_task = factories.get_model_factory("CycleTaskGroupObjectTask")()
 
     with freeze_time("2017-01-25"):
       self.api.modify_object(cycle_task, {
@@ -93,7 +93,9 @@ class TestCycleTaskDeprecated(TestCase):
     """Test filter cycle task by last deprecated date."""
     amount_of_cycle_tasks = 5
     list_of_ids = []
-    cycle_task_factory = factories.get_model_factory("CycleTaskFactory")
+    cycle_task_factory = factories.get_model_factory(
+        "CycleTaskGroupObjectTask"
+    )
     with factories.single_commit():
       with freeze_time("2017-01-25"):
         for _ in range(amount_of_cycle_tasks):
@@ -123,7 +125,9 @@ class TestCycleTaskDeprecated(TestCase):
     """Test sorting results of filter cycle tasks by deprecated date."""
     dict_of_dates = {}
     date_list = ["2017-01-25", "2017-01-29", "2017-01-02", "2017-01-26"]
-    cycle_task_factory = factories.get_model_factory("CycleTaskFactory")
+    cycle_task_factory = factories.get_model_factory(
+        "CycleTaskGroupObjectTask"
+    )
     with factories.single_commit():
       for date in date_list:
         with freeze_time(date):

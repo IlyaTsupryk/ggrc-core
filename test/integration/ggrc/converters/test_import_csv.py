@@ -202,7 +202,7 @@ class TestBasicCsvImport(TestCase):
 
   def test_duplicate_people_objective(self):
     """Test duplicate error that causes request to fail."""
-    self.generator.generate_object(models.Objective, {"slug": "objective1"})
+    factories.ObjectiveFactory(slug="objective1")
     filename = "duplicate_object_person_objective_error.csv"
     response = self.import_file(filename)[0]
 
