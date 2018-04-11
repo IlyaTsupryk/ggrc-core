@@ -39,7 +39,9 @@ class Indexed(object):
     """Return insert class record query. It will return None, if it's empty."""
     if not ids:
       return
-    instances = cls.indexed_query().filter(cls.id.in_(ids))
+    instances = cls.indexed_query().filter(cls.id.in_(ids)).execution_options(
+        stream_results=True
+    )
     indexer = fulltext.get_indexer()
     keys = inspect(indexer.record_type).c
     records = (indexer.fts_record_for(i) for i in instances)
