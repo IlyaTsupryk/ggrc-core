@@ -4,6 +4,7 @@
 """Sets up Flask app."""
 
 
+import os
 import re
 import time
 
@@ -49,6 +50,11 @@ for key in settings.exports:
 # Configure Flask-SQLAlchemy for app
 db.app = app
 db.init_app(app)
+
+logger.info("Debug is {0}, SQLALCHEMY_RECORD_QUERIES is {1}".format(
+    str(app.debug),
+    str(app.config["SQLALCHEMY_RECORD_QUERIES"])
+))
 
 # This should be imported after db.init_app id performed.
 # Imported so it can be used with getattr.

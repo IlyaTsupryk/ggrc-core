@@ -16,6 +16,7 @@ from flask import g
 from flask import render_template
 from flask import url_for
 from flask import request
+from flask import _app_ctx_stack
 from werkzeug.exceptions import Forbidden
 
 from ggrc import models
@@ -192,6 +193,9 @@ def do_reindex():
       ids = [obj.id for obj in model.query]
       ids_count = len(ids)
       handled_ids = 0
+      if hasattr(_app_ctx_stack.top, "sqlalchemy_queries") and \
+          _app_ctx_stack.top.sqlalchemy_queries:
+        logger.info("sqlalchemy_queries is not empty")
       for ids_chunk in utils.list_chunks(ids):
         handled_ids += len(ids_chunk)
         logger.info("%s: %s / %s", model_name, handled_ids, ids_count)
