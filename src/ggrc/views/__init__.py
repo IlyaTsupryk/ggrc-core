@@ -202,7 +202,13 @@ def do_reindex():
         model.bulk_record_update_for(ids_chunk)
         db.session.commit()
 
+  logger.info("Updating index for: %s", "Snapshot")
+  with benchmark("Create records for %s" % "Snapshot"):
+    snapshot_indexer.reindex()
+
   indexer.invalidate_cache()
+
+  start_compute_attributes("all_latest")
 
 
 class SetEncoder(json.JSONEncoder):
