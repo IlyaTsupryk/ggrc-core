@@ -21,6 +21,7 @@ class TaskGroupRBACFactory(base.BaseRBACFactory):
         acr: Instance of ACR that should be assigned for tested user.
         parent: Model name in scope of which objects should be set up.
     """
+    # pylint: disable=unused-argument
     self.setup_workflow_scope(user_id, acr)
 
     self.admin_control_id = {

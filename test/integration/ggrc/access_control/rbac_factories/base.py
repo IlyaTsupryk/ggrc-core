@@ -13,7 +13,7 @@ from integration.ggrc_workflows.models import factories as wf_factories
 
 class BaseRBACFactory(object):
   """Base RBAC factory class."""
-  # pylint: disable=too-few-public-methods
+  # pylint: disable=too-many-instance-attributes
 
   def setup_program_scope(self, user_id, acr, parent=None):
     """Set up base set of objects for permission tests of Program scope models.
@@ -48,6 +48,7 @@ class BaseRBACFactory(object):
         acr: Instance of ACR that should be assigned for tested user.
         parent: Model name in scope of which objects should be set up.
     """
+    # pylint: disable=attribute-defined-outside-init
     with factories.single_commit():
       self.workflow = wf_factories.WorkflowFactory()
       self.workflow_id = self.workflow.id
@@ -81,7 +82,8 @@ class BaseRBACFactory(object):
         }
     })
 
-  def assign_person(self, object_, acr, person_id):
+  @staticmethod
+  def assign_person(object_, acr, person_id):
     """Assign person to object."""
     if sa.inspect(acr).detached:
       db.session.add(acr)
