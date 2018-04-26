@@ -2,14 +2,23 @@
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 import csv
+import logging
 from StringIO import StringIO
 import chardet
 
+from flask import g
+
+from ggrc.app import app
+from ggrc.data_platform import computed_attributes
+from ggrc.models import person
 from ggrc.models.reflection import AttributeInfo
 from ggrc.converters import errors
 from ggrc.converters import get_exportables
 from ggrc.converters.column_handlers import model_column_handlers
 from ggrc.converters.handlers import handlers
+
+# pylint: disable=invalid-name
+logger = logging.getLogger(__name__)
 
 
 def get_object_column_definitions(object_class):
@@ -200,3 +209,16 @@ def get_export_filename(objects, current_time):
   """Generate export file name"""
   object_names = "_".join(obj['object_name'] for obj in objects)
   return "{}_{}.csv".format(object_names, current_time)
+
+
+def calculate_computed_attributes(revision_ids, user_id):
+  """Calculate computed attributes as deferred task."""
+  with app.app_context():
+    try:
+      user = person.Person.query.get(user_id)
+      setattr(g, '_current_user', user)
+      computed_attributes.compute_attributes(revision_ids)
+    except Exception as e:
+      logger.exception(
+          "Calculation of computed attributes failed: %s", e.message
+      )
