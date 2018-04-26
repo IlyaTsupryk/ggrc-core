@@ -2,7 +2,7 @@
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 import logging
-from flask import g, has_request_context
+from flask import g, has_app_context
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -64,11 +64,11 @@ class Cache:
     indicates if a new cache should be created if none exists. If we
     are not in a request context, no cache is created (return None).
     """
-    if has_request_context():
+    if has_app_context():
       cache = getattr(g, 'cache', None)
       if cache is None and create:
         cache = g.cache = Cache()
       return cache
     else:
-      logger.warning("No request context - no cache created")
+      logger.warning("No app context - no cache created")
       return None
