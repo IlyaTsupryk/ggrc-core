@@ -5,11 +5,15 @@
 
 from collections import defaultdict
 
+from google.appengine.ext import deferred
+
+from ggrc import login
 from ggrc import settings
 from ggrc.utils import benchmark
 from ggrc.utils import structures
 from ggrc.cache.memcache import MemCache
 from ggrc.converters import get_exportables
+from ggrc.converters import import_helper
 from ggrc.converters.base_block import BlockConverter
 from ggrc.converters.snapshot_block import SnapshotBlockConverter
 from ggrc.converters.import_helper import extract_relevant_data
@@ -90,12 +94,16 @@ class Converter(object):
     return csv_data
 
   def _start_compute_attributes_job(self):
-    from ggrc import views
     revision_ids = []
     for block_converter in self.block_converters:
       revision_ids.extend(block_converter.revision_ids)
     if revision_ids:
-      views.start_compute_attributes(revision_ids)
+      cur_user = login.get_current_user()
+      deferred.defer(
+          import_helper.calculate_computed_attributes,
+          revision_ids,
+          cur_user.id
+      )
 
   def import_csv(self):
     self.block_converters_from_csv()
