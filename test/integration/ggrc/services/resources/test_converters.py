@@ -17,8 +17,6 @@ from datetime import datetime
 import ddt
 import mock
 
-from google.appengine.ext import testbed
-
 from ggrc.models import all_models
 
 from integration.ggrc import api_helper
@@ -38,15 +36,7 @@ class TestImportExports(TestCase):
         "X-Requested-By": ["GGRC"],
     }
     self.api = api_helper.Api()
-    self.testbed = testbed.Testbed()
-    self.testbed.activate()
-
-    # root_path must be set the the location of queue.yaml.
-
-    # Otherwise, only the 'default' queue will be available.
-    self.testbed.init_taskqueue_stub()
-    self.taskqueue_stub = self.testbed.get_stub(
-        testbed.TASKQUEUE_SERVICE_NAME)
+    self.init_taskqueue()
 
   @mock.patch("ggrc.gdrive.file_actions.get_gdrive_file_data",
               new=lambda x: (x, None, None))
