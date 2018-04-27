@@ -7,7 +7,7 @@
 
 import collections
 
-from ggrc import models
+from ggrc import models, db
 
 from integration.ggrc import TestCase
 from integration.ggrc.models import factories
@@ -102,3 +102,19 @@ class TestControlsImport(TestCase):
     fail_response = {u'message': u'Import failed due to server error.',
                      u'code': 400}
     self.assertNotEqual(response, fail_response)
+
+  def test_import_control_revisions(self):
+    """Test if new revisions created during import."""
+    response = self.import_data(collections.OrderedDict([
+        ("object_type", "Control"),
+        ("Code*", ""),
+        ("title", "Test control"),
+        ("Admin", "user@example.com"),
+    ]))
+    self._check_csv_response(response, {})
+    control = models.Control.query.filter_by(title="Test control").first()
+    revision_actions = db.session.query(models.Revision.action).filter(
+        models.Revision.resource_type == "Control",
+        models.Revision.resource_id == control.id
+    )
+    self.assertEqual({"created", "modified"}, {a[0] for a in revision_actions})
