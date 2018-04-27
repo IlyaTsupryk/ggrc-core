@@ -16,7 +16,11 @@ from datetime import datetime
 
 import ddt
 import mock
+import thread
 
+from google.appengine.ext import deferred
+
+from ggrc import db
 from ggrc.models import all_models
 
 from integration.ggrc import api_helper
@@ -218,3 +222,46 @@ class TestImportExports(TestCase):
         headers=self.headers)
     self.assert200(response)
     self.assertEqual(json.loads(response.data)["status"], "Stopped")
+
+  @mock.patch(
+      "ggrc.gdrive.file_actions.get_gdrive_file_data",
+      new=lambda x: (x, None, None)
+  )
+  def test_import_control_revisions(self):
+    """Test if new revisions created during import."""
+    user = all_models.Person.query.first()
+    data = """
+Object type,,,
+Control,Code*,Title*,Admin*
+,,Test control,user@example.com
+"""
+    ie1 = factories.ImportExportFactory(
+        job_type="Import",
+        status="Blocked",
+        created_by=user,
+        created_at=datetime.now(),
+        content=data,
+    )
+
+    response = self.client.put(
+        "/api/people/{}/imports/{}/start".format(user.id, ie1.id),
+        headers=self.headers,
+    )
+    self.assert200(response)
+
+    import ipdb;ipdb.set_trace()
+    tasks = self.taskqueue_stub.get_filtered_tasks()
+    self.assertEqual(len(tasks), 1)
+
+#    with mock.patch("ggrc.views.converters.check_for_previous_run"):
+
+    def run_task():
+      deferred.run(tasks[0].payload)
+
+    thread.start_new_thread(run_task, ())
+    control = all_models.Control.query.filter_by(title="Test control").first()
+    revision_actions = db.session.query(all_models.Revision.action).filter(
+        all_models.Revision.resource_type == "Control",
+        all_models.Revision.resource_id == control.id
+    )
+    self.assertEqual({"created", "modified"}, {a[0] for a in revision_actions})
