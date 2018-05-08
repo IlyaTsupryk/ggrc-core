@@ -363,6 +363,12 @@ def get_model_name_inflector_dict():
 
 def get_custom_attributes_for(model_name, instance_id=None):
   """Returns custom attributes jsons for sent model_name and instance_id."""
+  from ggrc import models
+  if not issubclass(
+      models.get_model(model_name), models.mixins.CustomAttributable
+  ):
+    return []
+
   definition_type = get_model_name_inflector_dict()[model_name]
   if not definition_type:
     return []
