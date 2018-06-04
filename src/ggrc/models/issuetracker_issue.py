@@ -14,6 +14,7 @@ from ggrc.models import utils
 
 class IssuetrackerIssue(base.ContextRBAC, Base, db.Model):
   """Class representing IssuetrackerIssue."""
+  # pylint: disable=too-many-instance-attributes
 
   __tablename__ = 'issuetracker_issues'
 

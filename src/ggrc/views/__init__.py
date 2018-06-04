@@ -676,6 +676,7 @@ def init_extra_views(app_):
   notifications.init_notification_views(app_)
   query_views.init_query_views(app_)
   query_views.init_clone_views(app_)
+  query_views.init_generate_issues_view(app_)
 
 
 def init_all_views(app_):

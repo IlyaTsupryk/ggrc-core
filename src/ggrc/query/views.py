@@ -17,6 +17,7 @@ from ggrc.query.default_handler import DefaultHandler
 from ggrc.query.assessment_related_objects import AssessmentRelatedObjects
 from ggrc.login import login_required
 from ggrc.models.inflector import get_model
+from ggrc.services import issuetracker
 from ggrc.services.common import etag
 from ggrc.utils import as_json
 from ggrc.utils import benchmark
@@ -143,3 +144,16 @@ def init_clone_views(app):
     if issubclass(model, clonable.MultiClonable):
       url = "/api/{}/clone".format(model._inflector.table_singular)
       app.route(url, methods=['POST'])(lambda m=model: _clone_objects(m))
+
+
+def init_generate_issues_view(app):
+  # pylint: disable=unused-variable
+  """Initialize generate issues api endpoint."""
+  @app.route('/generate_issues', methods=['POST'])
+  @login_required
+  def generate_issues():
+    """Generate linked buganizer issues for provided objects."""
+    try:
+      return issuetracker.handle_issues_generation(request.json)
+    except (NotImplementedError, BadQueryException) as exc:
+      raise BadRequest(exc.message)
