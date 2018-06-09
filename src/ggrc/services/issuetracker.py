@@ -197,7 +197,7 @@ def bulk_create_issuetracker_info(tracked_objs, people_emails):
 
       created[(obj.type, obj.id)] = issue_json
     except integrations_errors.Error as error:
-      errors.append((obj.type, obj.id, error))
+      errors.append((obj.type, obj.id, str(error)))
 
   update_db_issues(created)
   return created, errors
@@ -262,6 +262,8 @@ def update_db_issues(issues_info):
   Args:
       issues_info: Dict with issue properties.
   """
+  if not issues_info:
+    return
   issuetracker = all_models.IssuetrackerIssue.__table__
   stmt = issuetracker.update().where(
       sa.and_(
