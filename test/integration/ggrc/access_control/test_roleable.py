@@ -5,7 +5,7 @@
 import ddt
 from ggrc import db
 from ggrc.models import all_models
-from integration.ggrc import TestCase
+from integration.ggrc import TestCase, api_helper
 from integration.ggrc.models import factories
 
 
@@ -15,6 +15,7 @@ class TestAccessControlRoleable(TestCase):
 
   def setUp(self):
     super(TestAccessControlRoleable, self).setUp()
+    self.api = api_helper.Api()
     with factories.single_commit():
       self.role = factories.AccessControlRoleFactory()
       self.person = factories.PersonFactory()
@@ -94,3 +95,29 @@ class TestAccessControlRoleable(TestCase):
         (person_2.id, role.id),
         (person_3.id, role.id)
     ], acls)
+
+  def test_acl_cleanup_on_obj_delete(self):
+    """Test if propagated roles of parent object is removed with child."""
+    program_editor_acr = all_models.AccessControlRole.query.filter_by(
+        object_type="Program",
+        name="Program Editors",
+    ).first()
+
+    with factories.single_commit():
+      person = factories.PersonFactory()
+      program = factories.ProgramFactory()
+      control = factories.ControlFactory()
+      factories.RelationshipFactory(source=program, destination=control)
+
+      factories.AccessControlListFactory(
+          object=program,
+          ac_role=program_editor_acr,
+          person=person
+      )
+
+    response = self.api.delete(control)
+    self.assertEqual(response.status_code, 200)
+    acl_obj_types = db.session.query(all_models.AccessControlList.object_type)
+    # All roles for first person should be removed
+    self.assertEqual(acl_obj_types.count(), 1)
+    self.assertEqual(acl_obj_types.first()[0], "Program")

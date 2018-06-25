@@ -46,3 +46,46 @@ class TestDelete(TestCase, WithQueryApi):
     self.assertEqual(result.json["message"],
                      "This request will break a mandatory relationship from "
                      "assessments to audits.")
+
+  def test_ca_deleted(self):
+    """Test if CADs/CAVs are removed together with parent model."""
+    with factories.single_commit():
+      asmnt = factories.AssessmentFactory()
+      for _ in range(3):
+        cad = factories.CustomAttributeDefinitionFactory(
+            title=factories.random_str(),
+            definition_type=asmnt.type.lower(),
+            definition_id=asmnt.id,
+            attribute_type="Text",
+        )
+        factories.CustomAttributeValueFactory(
+            custom_attribute=cad,
+            attributable=asmnt,
+            attribute_value=factories.random_str()
+        )
+
+    result = self.api.delete(asmnt)
+    self.assert200(result)
+
+    self.assertEqual(all_models.CustomAttributeDefinition.query.count(), 0)
+    self.assertEqual(all_models.CustomAttributeValue.query.count(), 0)
+
+  def test_mappings_deleted(self):
+    """Test if relationships deleted when one of mapped object deleted."""
+    with factories.single_commit():
+      audit = factories.AuditFactory()
+      asmnt = factories.AssessmentFactory(audit=audit)
+      factories.RelationshipFactory(source=audit, destination=asmnt)
+      controls = [factories.ControlFactory()]
+    snapshots = self._create_snapshots(audit, controls)
+    for snapshot in snapshots:
+      factories.RelationshipFactory(source=audit, destination=snapshot)
+      factories.RelationshipFactory(source=asmnt, destination=snapshot)
+
+    result = self.api.delete(asmnt)
+    self.assert200(result)
+    rels = db.session.query(
+        all_models.Relationship.source_type,
+        all_models.Relationship.destination_type
+    ).all()
+    self.assertEqual(rels, [("Audit", "Snapshot")])

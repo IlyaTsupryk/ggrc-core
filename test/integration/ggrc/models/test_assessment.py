@@ -295,6 +295,28 @@ class TestAssessment(TestAssessmentBase):
           "{}".format(ac_role), person_email, audit
       )
 
+  def test_acl_deleted(self):
+    """Test if related ACL entries removed with parent model."""
+    with factories.single_commit():
+      asmnt = factories.AssessmentFactory()
+      person = factories.PersonFactory()
+      acl_ids = []
+      for ac_role_id in self.assignee_roles.values():
+        acl_ids.append(
+            factories.AccessControlListFactory(
+                ac_role_id=ac_role_id,
+                person=person,
+                object=asmnt
+            ).id
+        )
+
+    result = self.api.delete(asmnt)
+    self.assert200(result)
+    acl_query = all_models.AccessControlList.query.filter(
+        all_models.AccessControlList.id.in_(acl_ids)
+    )
+    self.assertEqual(acl_query.count(), 0)
+
   def test_assignee_deletion_unmap(self):
     """Test deletion of assignee roles when snapshot is unmapped."""
     with factories.single_commit():
