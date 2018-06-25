@@ -3,7 +3,7 @@
 
 """Handlers for access control roles."""
 
-from ggrc import models
+from ggrc import models, db
 from ggrc.converters.handlers import handlers
 
 
@@ -37,6 +37,7 @@ class AccessControlRoleColumnHandler(handlers.UsersColumnHandler):
     for person in people_list:
       acl = acl_email_map[person.email]
       self.row_converter.obj.access_control_list.remove(acl)
+      db.session.delete(acl)
 
   def set_obj_attr(self):
     """Update current AC list with correct people values."""

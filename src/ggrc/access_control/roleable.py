@@ -40,7 +40,8 @@ class Roleable(object):
         ),
         foreign_keys='AccessControlList.object_id',
         backref='{0}_object'.format(cls.__name__),
-        cascade='all, delete-orphan')
+        passive_deletes="all",
+    )
 
   @hybrid_property
   def access_control_list(self):
@@ -126,6 +127,7 @@ class Roleable(object):
                for acl in self.access_control_list}
     for value in values:
       self._access_control_list.remove(val_map[value])
+      db.session.delete(val_map[value])
 
   @classmethod
   def eager_query(cls):
