@@ -10,12 +10,13 @@ from sqlalchemy.sql.expression import select
 from sqlalchemy import event
 
 from ggrc import db
+from ggrc import utils
 from ggrc.fulltext.sql import SqlIndexer
 from ggrc.models import all_models
 from ggrc.models.inflector import get_model
 from ggrc.query import my_objects
 from ggrc.rbac import permissions
-from ggrc.utils import benchmark
+from ggrc.utils import benchmark, helpers
 
 
 # pylint: disable=too-few-public-methods
@@ -223,6 +224,7 @@ Indexer = MysqlIndexer
 
 
 @event.listens_for(db.session.__class__, 'before_commit')
+@helpers.without_sqlalchemy_cache
 def update_indexer(session):  # pylint:disable=unused-argument
   """General function to update index
 
@@ -242,9 +244,12 @@ def update_indexer(session):  # pylint:disable=unused-argument
     # expire required to fix declared_attr cached value
     db.session.expire_all()
     db.session.reindex_set.invalidate()
-    for model_name, ids in models_ids_to_reindex.iteritems():
-      get_model(model_name).bulk_record_update_for(ids)
 
+    for model_name, ids in models_ids_to_reindex.iteritems():
+      handled_ids = 0
+      for ids_chunk in utils.list_chunks(list(ids), chunk_size=50):
+        handled_ids += len(ids_chunk)
+        get_model(model_name).bulk_record_update_for(ids_chunk)
 
 # pylint:disable=unused-argument
 @event.listens_for(all_models.Relationship, "after_insert")
