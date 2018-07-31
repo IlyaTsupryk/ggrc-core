@@ -7,7 +7,7 @@ from logging import getLogger
 from ggrc import db
 from ggrc.models import all_models
 from ggrc.converters import errors
-from ggrc.converters.handlers import handlers
+from ggrc.converters.handlers import handlers, reference
 from ggrc.login import get_current_user_id
 from ggrc.converters.handlers.file_handler import FileHandler
 
@@ -15,7 +15,7 @@ from ggrc.converters.handlers.file_handler import FileHandler
 logger = getLogger(__name__)
 
 
-class EvidenceUrlHandler(handlers.ColumnHandler):
+class EvidenceUrlHandler(reference.ReferenceHandler):
   """Handler for Evidence URL field on evidence imports."""
 
   KIND = all_models.Evidence.URL
@@ -32,7 +32,7 @@ class EvidenceUrlHandler(handlers.ColumnHandler):
     return "\n".join(doc.link for doc in self.row_converter.obj.evidences_url)
 
   def build_evidence(self, link, user_id):
-    """Build evidence object"""
+    """Build evidence object."""
     evidence = all_models.Evidence(
         link=link,
         title=link,
@@ -42,45 +42,6 @@ class EvidenceUrlHandler(handlers.ColumnHandler):
     )
     evidence.add_admin_role()
     return evidence
-
-  def parse_item(self):
-    """Parse evidence link lines.
-
-    Returns:
-      list of evidences for all URLs and evidences.
-    """
-    evidence_links = []
-    if self.raw_value:
-      seen_links = set()
-      duplicate_links = set()
-
-      for line in self.raw_value.splitlines():
-        link = line.strip()
-        if not link:
-          continue
-
-        if link not in seen_links:
-          seen_links.add(link)
-          evidence_links.append(link)
-        else:
-          duplicate_links.add(link)
-
-      if duplicate_links:
-        # NOTE: We rely on the fact that links in duplicate_links are all
-        # instances of unicode (if that assumption breaks,
-        # unicode encode/decode errors can occur for non-ascii link values)
-        self.add_warning(errors.DUPLICATE_IN_MULTI_VALUE,
-                         column_name=self.display_name,
-                         duplicates=u", ".join(sorted(duplicate_links)))
-
-    return evidence_links
-
-  def set_obj_attr(self):
-    """Set attribute value to object."""
-    self.value = self.parse_item()
-
-  def set_value(self):
-    """This should be ignored with second class attributes."""
 
   def insert_object(self):
     """Update document URL values

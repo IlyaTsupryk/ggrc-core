@@ -5,6 +5,7 @@
 
 from logging import getLogger
 from ggrc import db
+from ggrc.converters.handlers import reference
 from ggrc.models import all_models
 from ggrc.converters import errors
 from ggrc.converters.handlers import handlers
@@ -14,7 +15,7 @@ from ggrc.converters.handlers.file_handler import FileHandler
 logger = getLogger(__name__)
 
 
-class DocumentReferenceUrlHandler(handlers.ColumnHandler):
+class DocumentReferenceUrlHandler(reference.ReferenceHandler):
   """Base class for document documents handlers."""
 
   KIND = all_models.Document.REFERENCE_URL
@@ -28,8 +29,11 @@ class DocumentReferenceUrlHandler(handlers.ColumnHandler):
     return "\n".join(doc.link for doc in
                      self.row_converter.obj.documents_reference_url)
 
+  def _get_old_map(self):
+    return {d.link: d for d in self.row_converter.obj.documents_reference_url}
+
   def build_document(self, link, user_id):
-    """Build document object"""
+    """Build document object."""
     document = all_models.Document(
         link=link,
         title=link,
@@ -39,56 +43,6 @@ class DocumentReferenceUrlHandler(handlers.ColumnHandler):
     )
     document.add_admin_role()
     return document
-
-  def parse_item(self):
-    """Parse document link lines.
-
-    Returns:
-      list of documents for all URLs and evidences.
-    """
-    document_links = []
-    if self.raw_value:
-      seen_links = set()
-      duplicate_links = set()
-      for line in self.raw_value.splitlines():
-        link = line.strip()
-        if not link:
-          continue
-
-        if link not in seen_links:
-          seen_links.add(link)
-          document_links.append(link)
-        else:
-          duplicate_links.add(link)
-
-      if duplicate_links:
-        # NOTE: We rely on the fact that links in duplicate_inks are all
-        # instances of unicode (if that assumption breaks, unicode
-        # encode/decode errors can occur for non-ascii link values)
-        self.add_warning(errors.DUPLICATE_IN_MULTI_VALUE,
-                         column_name=self.display_name,
-                         duplicates=u", ".join(sorted(duplicate_links)))
-
-    return document_links
-
-  def set_obj_attr(self):
-    """Set attribute value to object."""
-    self.value = self.parse_item()
-
-  def set_value(self):
-    """This should be ignored with second class attributes."""
-
-  def _get_old_map(self):
-    return {d.link: d for d in self.row_converter.obj.documents_reference_url}
-
-  def remove_relationship(self, relationships, extract_func):
-    """Remove relationship if parent == counterparty, return True if removed"""
-    parent = self.row_converter.obj
-    for rel in relationships:
-      if extract_func(rel) == parent:
-        db.session.delete(rel)
-        return True
-    return False
 
   def insert_object(self):
     """Update document Reference URL values
