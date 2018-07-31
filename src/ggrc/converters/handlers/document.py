@@ -46,11 +46,10 @@ class DocumentReferenceUrlHandler(handlers.ColumnHandler):
     Returns:
       list of documents for all URLs and evidences.
     """
-    documents = []
+    document_links = []
     if self.raw_value:
       seen_links = set()
-      duplicate_inks = set()
-      user_id = get_current_user_id()
+      duplicate_links = set()
       for line in self.raw_value.splitlines():
         link = line.strip()
         if not link:
@@ -58,21 +57,22 @@ class DocumentReferenceUrlHandler(handlers.ColumnHandler):
 
         if link not in seen_links:
           seen_links.add(link)
-          documents.append(self.build_document(link, user_id))
+          document_links.append(link)
         else:
-          duplicate_inks.add(link)
+          duplicate_links.add(link)
 
-      if duplicate_inks:
+      if duplicate_links:
         # NOTE: We rely on the fact that links in duplicate_inks are all
         # instances of unicode (if that assumption breaks, unicode
         # encode/decode errors can occur for non-ascii link values)
         self.add_warning(errors.DUPLICATE_IN_MULTI_VALUE,
                          column_name=self.display_name,
-                         duplicates=u", ".join(sorted(duplicate_inks)))
+                         duplicates=u", ".join(sorted(duplicate_links)))
 
-    return documents
+    return document_links
 
   def set_obj_attr(self):
+    """Set attribute value to object."""
     self.value = self.parse_item()
 
   def set_value(self):
@@ -98,19 +98,20 @@ class DocumentReferenceUrlHandler(handlers.ColumnHandler):
     if self.row_converter.ignore:
       return
 
-    new_link_map = {d.link: d for d in self.value}
     old_link_map = self._get_old_map()
 
     parent = self.row_converter.obj
-    for new_link, new_doc in new_link_map.iteritems():
+    for new_link in self.value:
       if new_link not in old_link_map:
-        all_models.Relationship(source=parent,
-                                destination=new_doc)
-      else:
-        db.session.expunge(new_doc)
+        new_doc = self.build_document(new_link, get_current_user_id())
+        db.session.add(new_doc)
+        all_models.Relationship(
+            source=parent,
+            destination=new_doc
+        )
 
     for old_link, old_doc in old_link_map.iteritems():
-      if old_link in new_link_map:
+      if old_link in self.value:
         continue
 
       if not (self.remove_relationship(old_doc.related_destinations,

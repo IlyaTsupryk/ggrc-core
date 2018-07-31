@@ -49,11 +49,10 @@ class EvidenceUrlHandler(handlers.ColumnHandler):
     Returns:
       list of evidences for all URLs and evidences.
     """
-    evidences = []
+    evidence_links = []
     if self.raw_value:
       seen_links = set()
       duplicate_links = set()
-      user_id = get_current_user_id()
 
       for line in self.raw_value.splitlines():
         link = line.strip()
@@ -62,7 +61,7 @@ class EvidenceUrlHandler(handlers.ColumnHandler):
 
         if link not in seen_links:
           seen_links.add(link)
-          evidences.append(self.build_evidence(link, user_id))
+          evidence_links.append(link)
         else:
           duplicate_links.add(link)
 
@@ -74,9 +73,10 @@ class EvidenceUrlHandler(handlers.ColumnHandler):
                          column_name=self.display_name,
                          duplicates=u", ".join(sorted(duplicate_links)))
 
-    return evidences
+    return evidence_links
 
   def set_obj_attr(self):
+    """Set attribute value to object."""
     self.value = self.parse_item()
 
   def set_value(self):
@@ -90,18 +90,17 @@ class EvidenceUrlHandler(handlers.ColumnHandler):
     """
     if self.row_converter.ignore:
       return
-    new_link_map = {d.link: d for d in self.value}
     old_link_map = self._get_old_map()
 
-    for new_link, new_evidence in new_link_map.iteritems():
+    for new_link in self.value:
       if new_link not in old_link_map:
+        new_evidence = self.build_evidence(new_link, get_current_user_id())
+        db.session.add(new_evidence)
         all_models.Relationship(source=self.row_converter.obj,
                                 destination=new_evidence)
-      else:
-        db.session.expunge(new_evidence)
 
     for old_link, old_evidence in old_link_map.iteritems():
-      if old_link in new_link_map:
+      if old_link in self.value:
         continue
       if old_evidence.related_destinations:
         old_evidence.related_destinations.pop()
