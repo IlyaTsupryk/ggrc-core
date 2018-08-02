@@ -144,16 +144,3 @@ def init_clone_views(app):
     if issubclass(model, clonable.MultiClonable):
       url = "/api/{}/clone".format(model._inflector.table_singular)
       app.route(url, methods=['POST'])(lambda m=model: _clone_objects(m))
-
-
-def init_generate_issues_view(app):
-  # pylint: disable=unused-variable
-  """Initialize generate issues api endpoint."""
-  @app.route('/generate_issues', methods=['POST'])
-  @login_required
-  def generate_issues():
-    """Generate linked buganizer issues for provided objects."""
-    try:
-      return issuetracker.handle_issues_generation(request.json)
-    except (NotImplementedError, BadQueryException) as exc:
-      raise BadRequest(exc.message)

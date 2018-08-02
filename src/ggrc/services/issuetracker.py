@@ -25,8 +25,11 @@ from ggrc import utils
 
 logger = logging.getLogger(__name__)
 
+WRONG_COMPONENT_ERR = "Component {} does not exist"
+WRONG_HOTLIST_ERR = "No Hotlist with id: {}"
 
-def handle_issues_generation(json_data):
+
+def handle_children_issues_generation(json_data):
   """Generate IssueTracker issues in bulk.
 
   Args:
@@ -46,16 +49,8 @@ def handle_issues_generation(json_data):
         children or read rights on parent.
         If provided parameters are incorrect, status 400 will be used.
   """
-  if not json_data:
-    raise exceptions.BadRequest("Data is not provided in request.")
+  issue_objs = parse_request_data(json_data)
 
-  model = models.get_model(json_data.get("type"))
-  if not issubclass(model, issuetracker_issue.IssueTracked):
-    raise exceptions.BadRequest("Provided model is not IssueTracked.")
-
-  issue_objs = load_issue_tracker_objs(
-      model.__name__, json_data.get("ids")
-  ).all()
   # If there are no objects for update, return success response,
   # i.e. no need to create issues for objects that already have them or if
   # there are no obje
@@ -63,30 +58,36 @@ def handle_issues_generation(json_data):
     return prepare_response(None, [])
 
   issues_info = {}
-  forbid_objs = []
   people_cache = PeopleCache()
-
   for obj in issue_objs:
-    if allowed_generate_for(obj):
-      issues_info[(obj.type, obj.id)] = obj
-      people_cache.add_obj_roles(obj)
-    else:
-      forbid_objs.append(
-          {"type": obj.type, "id": obj.id, "reason": "Forbidden"}
-      )
-
-  if not issues_info:
-    raise exceptions.Forbidden
+    issues_info[(obj.type, obj.id)] = obj
+    people_cache.add_obj_roles(obj)
 
   people_cache.populate_from_db()
+  import ipdb;ipdb.set_trace()
   created, errors = bulk_create_issuetracker_info(
       issues_info,
       people_cache.get_people_emails()
   )
-  return prepare_response(created, errors, forbid_objs)
+  return prepare_response(created, errors)
 
 
-def load_issue_tracker_objs(model_name, ids):
+def parse_request_data(json_data):
+  if not json_data:
+    raise exceptions.BadRequest("Request data is not provided.")
+
+  parent_data = json_data.get("parent", {})
+  parent = models.get_model(parent_data.get("type"))
+  parent_id = parent_data.get("id")
+  child = models.get_model(json_data.get("child_type"))
+  if not issubclass(parent, issuetracker_issue.IssueTracked) or \
+     not issubclass(child, issuetracker_issue.IssueTracked):
+    raise exceptions.BadRequest("Provided model is not IssueTracked.")
+
+  return load_issue_tracker_objs(parent, parent_id, child).all()
+
+
+def load_issue_tracker_objs(parent_model, parent_id, child_model=None):
   """Create query to load objects which IssueTrackerIssues should be generated.
 
   Args:
@@ -96,32 +97,37 @@ def load_issue_tracker_objs(model_name, ids):
   Returns:
       SQLAlchemy query which load necessary objects.
   """
-  if model_name == "Audit":
-    issue_tracked_objs = all_models.Assessment.query.join(
-        all_models.IssuetrackerIssue,
-        sa.and_(
-            all_models.IssuetrackerIssue.object_type == "Assessment",
-            all_models.IssuetrackerIssue.object_id == all_models.Assessment.id,
-        )
-    ).join(
-        all_models.Audit,
-        all_models.Audit.id == all_models.Assessment.audit_id,
-    ).filter(
-        all_models.Audit.id.in_(ids),
-        all_models.IssuetrackerIssue.issue_id.is_(None),
-    ).options(
-        sa.orm.Load(all_models.Assessment).undefer_group(
-            "Assessment_complete",
-        ).subqueryload(
-            all_models.Assessment.audit
-        ).subqueryload(
-            all_models.Audit.issuetracker_issue
-        )
-    )
+  if parent_model.__name__ == "Audit" and child_model.__name__ == "Assessment":
+    issue_tracked_objs = load_audit_assessments(parent_id)
   else:
-    model = models.get_model(model_name)
-    issue_tracked_objs = model.query.filter(model.id.in_(ids))
+    issue_tracked_objs = parent_model.query.filter(
+        parent_model.id.in_(parent_id)
+    )
   return issue_tracked_objs
+
+
+def load_audit_assessments(audit_id):
+  return all_models.Assessment.query.join(
+      all_models.IssuetrackerIssue,
+      sa.and_(
+          all_models.IssuetrackerIssue.object_type == "Assessment",
+          all_models.IssuetrackerIssue.object_id == all_models.Assessment.id,
+      )
+  ).join(
+      all_models.Audit,
+      all_models.Audit.id == all_models.Assessment.audit_id,
+  ).filter(
+      all_models.Audit.id == audit_id,
+      all_models.IssuetrackerIssue.issue_id.is_(None),
+  ).options(
+      sa.orm.Load(all_models.Assessment).undefer_group(
+          "Assessment_complete",
+      ).subqueryload(
+          all_models.Assessment.audit
+      ).subqueryload(
+          all_models.Audit.issuetracker_issue
+      )
+  )
 
 
 def allowed_generate_for(obj):
@@ -135,7 +141,7 @@ def allowed_generate_for(obj):
   """
   conditions = [permissions.is_allowed_update_for(obj)]
   if hasattr(obj, "audit"):
-    conditions.append(permissions.is_allowed_read_for(obj.audit))
+    conditions.append(permissions.is_allowed_update_for(obj.audit))
   return all(conditions)
 
 
@@ -181,6 +187,9 @@ def bulk_create_issuetracker_info(tracked_objs, people_emails):
   # create issues in loop.
   for obj in tracked_objs.values():
     try:
+      if not allowed_generate_for(obj):
+        raise exceptions.Forbidden()
+
       issue_info = get_issue_info(obj)
       # pylint: disable=protected-access
       issue_tracker._normalize_issue_tracker_info(issue_info)
@@ -198,6 +207,13 @@ def bulk_create_issuetracker_info(tracked_objs, people_emails):
       created[(obj.type, obj.id)] = issue_json
     except integrations_errors.Error as error:
       errors.append((obj.type, obj.id, str(error)))
+      if error in [
+          WRONG_HOTLIST_ERR.format(issue_json["hotlist_id"]),
+          WRONG_COMPONENT_ERR.format(issue_json["component_id"])
+      ]:
+        return {}, errors
+    except exceptions.Forbidden:
+      errors.append((obj.type, obj.id, "Forbidden"))
 
   update_db_issues(created)
   return created, errors
@@ -382,25 +398,18 @@ def create_revisions(resources, event_id, user_id):
   db.session.execute(inserter.values(revision_data))
 
 
-def prepare_response(created, errors, forbid_objs=None):
+def prepare_response(created, errors):
   """Prepare response with information about generation errors.
 
   Args:
       created: Dict with info about created objects.
       errors: Dict with info about generation errors.
-      forbid_objs: List with info about objects for which user doesn't
-        have rights.
 
   Returns:
       flask.wrappers.Response - response with result of generation.
   """
-  failed_objs = [
-      {"type": type_, "id": id_, "reason": error}
-      for type_, id_, error in errors
-  ]
-  if forbid_objs:
-    failed_objs += forbid_objs
-  res_body = utils.as_json({"errors": failed_objs})
+  res_body = utils.as_json({"errors": errors})
+
   # Return 200 if any items were created or if no errors are happened
   if created or not errors:
     return make_response(res_body, 200)

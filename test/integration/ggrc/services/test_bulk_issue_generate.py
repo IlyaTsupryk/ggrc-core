@@ -25,7 +25,7 @@ class TestBulkIssuesGenerate(TestCase):
     self.gen = generator.ObjectGenerator()
 
     self.role_people = {
-        "Auditors": factories.PersonFactory(email="auditors@example.com"),
+        "Audit Captains": factories.PersonFactory(email="captain@example.com"),
         "Creators": factories.PersonFactory(email="creators@example.com"),
         "Assignees": factories.PersonFactory(email="assignees@example.com"),
         "Verifiers": factories.PersonFactory(email="verifiers@example.com"),
@@ -46,8 +46,8 @@ class TestBulkIssuesGenerate(TestCase):
       audit_id = audit.id
       factories.AccessControlListFactory(
           object=audit,
-          ac_role=role.get_ac_roles_for(audit.type)["Auditors"],
-          person=self.role_people["Auditors"],
+          ac_role=role.get_ac_roles_for(audit.type)["Audit Captains"],
+          person=self.role_people["Audit Captains"],
       )
       factories.IssueTrackerIssueFactory(
           issue_tracked_obj=audit,
@@ -76,7 +76,7 @@ class TestBulkIssuesGenerate(TestCase):
         asmnt_ids.append(asmnt.id)
       return audit_id, asmnt_ids
 
-  def generate_issues_for(self, obj_type, obj_ids):
+  def generate_asmnt_issues_for(self, obj_type, obj_id):
     """Generate IssueTracker issue for objects with provided type and ids.
 
     Args:
@@ -98,8 +98,11 @@ class TestBulkIssuesGenerate(TestCase):
     with client_patch:
       return self.api.send_request(
           self.api.client.post,
-          api_link="/generate_issues",
-          data={"type": obj_type, "ids": obj_ids}
+          api_link="/generate_children_issues",
+          data={
+              "parent": {"type": obj_type, "id": obj_id},
+              "child_type": "Assessment"
+          }
       )
 
   def assert_asmnt_issues(self, assessment_ids):
@@ -155,7 +158,7 @@ class TestBulkIssuesGenerate(TestCase):
   def test_issues_generate(self):
     """Test generation of issues for all Assessments in Audit."""
     audit_id, asmnt_ids = self.setup_assessments(3)
-    response = self.generate_issues_for("Audit", [audit_id])
+    response = self.generate_asmnt_issues_for("Audit", audit_id)
     self.assert200(response)
     self.assertEqual(response.json.get("errors"), [])
     self.assert_asmnt_issues(asmnt_ids)
@@ -165,7 +168,7 @@ class TestBulkIssuesGenerate(TestCase):
     audit_id, _ = self.setup_assessments(3)
     _, side_user = self.gen.generate_person(user_role="Creator")
     self.api.set_user(side_user)
-    response = self.generate_issues_for("Audit", [audit_id])
+    response = self.generate_asmnt_issues_for("Audit", audit_id)
     self.assert403(response)
 
   def test_partially_rights(self):
@@ -174,41 +177,39 @@ class TestBulkIssuesGenerate(TestCase):
     _, assignee_user = self.gen.generate_person(user_role="Creator")
     changed_asmnt_id = asmnt_ids[0]
     norights_asmnt_ids = asmnt_ids[1:]
-    asmnt = all_models.Assessment.query.get(changed_asmnt_id)
-    factories.AccessControlListFactory(
-        object=asmnt,
-        ac_role=role.get_ac_roles_for(asmnt.type)["Creators"],
-        person=assignee_user,
-    )
+    with factories.single_commit():
+      factories.AccessControlListFactory(
+          object_id=changed_asmnt_id,
+          object_type="Assessment",
+          ac_role_id=role.get_ac_roles_for("Assessment")["Creators"].id,
+          person_id=assignee_user.id,
+      )
+      audit_role = factories.AccessControlRoleFactory(
+          name="Edit Role",
+          object_type="Audit",
+          update=True
+      )
+      factories.AccessControlListFactory(
+          object_id=audit_id,
+          object_type="Audit",
+          ac_role_id=audit_role.id,
+          person_id=assignee_user.id,
+      )
 
     self.api.set_user(assignee_user)
-    response = self.generate_issues_for("Audit", [audit_id])
+    response = self.generate_asmnt_issues_for("Audit", audit_id)
     self.assert200(response)
-    errors = [
-        {"id": id_, "reason": "Forbidden", "type": "Assessment"}
-        for id_ in norights_asmnt_ids
-    ]
-    self.assertEqual(response.json.get("errors"), errors)
     self.assert_asmnt_issues([changed_asmnt_id])
     self.assert_not_updated("Assessment", norights_asmnt_ids)
 
-  @ddt.data(
-      (1, 1),
-      (1, 10),
-      (3, 3),
-  )
-  @ddt.unpack
-  def test_const_query_count(self, audits_count, asmnt_count):
-    """Test query count on generation for {} Audits and {} Assessments."""
-    audit_ids, asmnt_ids = [], []
-    for _ in range(audits_count):
-      audit_id, asmnt_id = self.setup_assessments(asmnt_count)
-      audit_ids.append(audit_id)
-      asmnt_ids += asmnt_id
+  @ddt.data(1, 3, 10)
+  def test_const_query_count(self, asmnt_count):
+    """Test query count on generation for {} Assessments."""
+    audit_id, asmnt_ids = self.setup_assessments(asmnt_count)
 
     with ggrc_utils.QueryCounter() as counter:
-      response = self.generate_issues_for("Audit", audit_ids)
+      response = self.generate_asmnt_issues_for("Audit", audit_id)
     self.assert200(response)
     self.assertEqual(response.json.get("errors"), [])
-    self.assertEqual(counter.get, 13)
+    self.assertEqual(counter.get, 25)
     self.assert_asmnt_issues(asmnt_ids)

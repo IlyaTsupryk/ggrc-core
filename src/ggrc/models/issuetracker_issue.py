@@ -203,4 +203,5 @@ class IssueTracked(object):
         IssuetrackerIssue,
         primaryjoin=join_function,
         backref="{}_issue_tracked".format(cls.__name__),
+        uselist=False,
     )
