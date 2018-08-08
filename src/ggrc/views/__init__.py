@@ -40,6 +40,7 @@ from ggrc.models.background_task import queued_task
 from ggrc.models.reflection import AttributeInfo
 from ggrc.models.revision import Revision
 from ggrc.rbac import permissions
+from ggrc.services import issuetracker
 from ggrc.services.common import as_json
 from ggrc.services.common import inclusion_filter
 from ggrc.query import views as query_views
@@ -174,6 +175,19 @@ def update_audit_issues(args):
           'for Assessment ID=%s while archiving/unarchiving Audit ID=%s: %s',
           issue_id, assessment_id, audit_id, error)
   return app.make_response(('success', 200, [('Content-Type', 'text/html')]))
+
+
+@app.route(
+    "/_background_tasks/run_children_issues_generation", methods=["POST"]
+)
+@queued_task
+def run_children_issues_generation(task):
+  """Web hook to generate linked buganizer issues for provided objects."""
+  try:
+    return issuetracker.handle_children_issues_generation(task.parameters)
+  except integrations_errors.Error as error:
+    logger.error('Bulk issue generation failed with error: %s', error.message)
+    raise exceptions.BadRequest(error.message)
 
 
 def start_compute_attributes(revision_ids=None, event_id=None):
@@ -736,3 +750,22 @@ def make_document_admin():
   clear_permission_cache()
   response = DocumentEndpoint.build_make_admin_response(request.json, docs)
   return Response(json.dumps(response), mimetype='application/json')
+
+
+@app.route('/generate_children_issues', methods=['POST'])
+@login_required
+def generate_children_issues():
+  """Generate linked buganizer issues for provided objects."""
+  task_queue = create_task(
+      "generate_children_issues",
+      url_for(run_children_issues_generation.__name__),
+      run_children_issues_generation,
+      request.json,
+  )
+  return task_queue.make_response(
+      app.make_response((
+          "scheduled %s" % task_queue.name,
+          200,
+          [('Content-Type', 'text/html')]
+      ))
+  )
