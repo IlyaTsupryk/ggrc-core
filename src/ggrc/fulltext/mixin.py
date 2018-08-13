@@ -6,7 +6,7 @@ from collections import namedtuple
 
 from sqlalchemy import orm
 
-from ggrc import db
+from ggrc import db, utils
 
 from ggrc import fulltext
 
@@ -33,21 +33,20 @@ class Indexed(object):
 
   PROPERTY_TEMPLATE = u"{}"
 
+  INSERT_CHUNK_SIZE = 3000
+
   def get_reindex_pair(self):
     return (self.__class__.__name__, self.id)
 
   @classmethod
-  def get_insert_query_for(cls, ids):
-    """Return insert class record query. It will return None, if it's empty."""
+  def get_insert_values(cls, ids):
+    """Return values that should be inserted into fulltext table."""
     if not ids:
       return None
     instances = cls.indexed_query().filter(cls.id.in_(ids))
     indexer = fulltext.get_indexer()
     rows = itertools.chain(*[indexer.records_generator(i) for i in instances])
-    values = list(rows)
-    if not values:
-      return None
-    return indexer.record_type.__table__.insert().values(values)
+    return list(rows) or None
 
   @classmethod
   def get_delete_query_for(cls, ids):
@@ -62,13 +61,24 @@ class Indexed(object):
     )
 
   @classmethod
+  def insert_index_data(cls, values):
+    """Insert provided values into fulltext table."""
+    if not values:
+      return
+
+    inserter = fulltext.get_indexer().record_type.__table__.insert()
+    for val in utils.list_chunks(list(values), cls.INSERT_CHUNK_SIZE):
+      db.session.execute(inserter.values(val))
+
+  @classmethod
   def bulk_record_update_for(cls, ids):
     """Bulky update index records for current class"""
     delete_query = cls.get_delete_query_for(ids)
-    insert_query = cls.get_insert_query_for(ids)
-    for query in [delete_query, insert_query]:
-      if query is not None:
-        db.session.execute(query)
+    if delete_query:
+      db.session.execute(delete_query)
+
+    insert_values = cls.get_insert_values(ids)
+    cls.insert_index_data(insert_values)
 
   @classmethod
   def indexed_query(cls):
