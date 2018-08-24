@@ -99,8 +99,11 @@ class BlockConverter(object):
     # TODO: remove 'if' statement. Init should initialize only.
     if self.object_class:
       names = {n.strip().strip("*").lower() for n in raw_headers or []} or None
-      self.object_headers = get_object_column_definitions(self.object_class,
-                                                          names)
+      self.object_headers = get_object_column_definitions(
+          self.object_class,
+          names,
+          object_ids
+      )
       if not raw_headers:
         all_header_names = [unicode(key)
                             for key in self._get_header_names().keys()]

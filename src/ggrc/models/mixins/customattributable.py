@@ -404,16 +404,22 @@ class CustomAttributable(object):
       # self.custom_attribute_values.append(new_value)
 
   @classmethod
-  def get_custom_attribute_definitions(cls, field_names=None):
+  def get_custom_attribute_definitions(cls, field_names=None, object_ids=None):
     """Get all applicable CA definitions (even ones without a value yet)."""
     from ggrc.models.custom_attribute_definition import \
         CustomAttributeDefinition as cad
 
     if cls.__name__ == "Assessment":
-      query = cad.query.filter(or_(
-          cad.definition_type == utils.underscore_from_camelcase(cls.__name__),
-          cad.definition_type == "assessment_template",
-      ))
+      query = cad.query.filter(
+          or_(
+              cad.definition_type == utils.underscore_from_camelcase(cls.__name__),
+              cad.definition_type == "assessment_template",
+          ),
+          or_(
+              cad.definition_id.is_(None),
+              cad.definition_id.in_(object_ids) if object_ids else False
+          )
+      )
     else:
       query = cad.query.filter(
           cad.definition_type == utils.underscore_from_camelcase(cls.__name__)
