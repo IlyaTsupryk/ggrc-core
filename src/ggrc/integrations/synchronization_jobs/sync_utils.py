@@ -106,18 +106,39 @@ def iter_issue_batches(ids, include_emails=False):
 
 def update_issue(cli, issue_id, params, max_attempts=5, interval=1):
   """Performs issue update request."""
-  attempts = max_attempts
-  while True:
-    attempts -= 1
+  last_error = integrations_errors.Error
+  for _ in range(max_attempts):
     try:
       cli.update_issue(issue_id, params)
     except integrations_errors.HttpError as error:
+      last_error = error
       if error.status == 429:
-        if attempts == 0:
-          raise
         logger.warning(
             'The request updating ticket ID=%s was '
             'rate limited and will be re-tried: %s', issue_id, error)
         time.sleep(interval)
         continue
     break
+  else:
+    logger.warning("Attempts limit(%s) was reached.", max_attempts)
+    raise last_error
+
+
+def create_issue(cli, params, max_attempts=5, interval=1):
+  """Performs issue create request."""
+  last_error = integrations_errors.Error
+  for _ in range(max_attempts):
+    try:
+      return cli.create_issue(params)
+    except integrations_errors.HttpError as error:
+      last_error = error
+      if error.status == 429:
+        logger.warning(
+            'The request creating ticket was rate limited and '
+            'will be re-tried: %s', error)
+        time.sleep(interval)
+        continue
+    break
+  else:
+    logger.warning("Attempts limit(%s) was reached.", max_attempts)
+  raise last_error

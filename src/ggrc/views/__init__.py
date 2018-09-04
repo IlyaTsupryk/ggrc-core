@@ -170,6 +170,58 @@ def update_audit_issues(args):
   return app.make_response(('success', 200, [('Content-Type', 'text/html')]))
 
 
+@app.route(
+    "/_background_tasks/run_children_issues_generation", methods=["POST"]
+)
+@background_task.queued_task
+def run_children_issues_generation(task):
+  """Generate IssueTracker issues for objects of child type in parent."""
+  try:
+    params = getattr(task, "parameters", {})
+    parent_type = params.get("parent", {}).get("type")
+    parent_id = params.get("parent", {}).get("id")
+    child_type = params.get("child_type")
+
+    from ggrc.integrations import issuetracker_bulk_sync
+    bulk_creator = issuetracker_bulk_sync.IssueTrackerBulkChildCreator()
+    return bulk_creator.sync_issuetracker(parent_type, parent_id, child_type)
+  except integrations_errors.Error as error:
+    logger.error('Bulk issue generation failed with error: %s', error.message)
+    raise exceptions.BadRequest(error.message)
+
+
+@app.route(
+    "/_background_tasks/run_issues_generation", methods=["POST"]
+)
+@background_task.queued_task
+def run_issues_generation(task):
+  """Generate linked IssueTracker issues for provided objects."""
+  try:
+    from ggrc.integrations import issuetracker_bulk_sync
+    bulk_creator = issuetracker_bulk_sync.IssueTrackerBulkCreator()
+    params = getattr(task, "parameters", {})
+    return bulk_creator.sync_issuetracker(params.get("objects"))
+  except integrations_errors.Error as error:
+    logger.error('Bulk issue generation failed with error: %s', error.message)
+    raise exceptions.BadRequest(error.message)
+
+
+@app.route(
+    "/_background_tasks/run_issues_update", methods=["POST"]
+)
+@background_task.queued_task
+def run_issues_update(task):
+  """Update linked IssueTracker issues for provided objects."""
+  try:
+    from ggrc.integrations import issuetracker_bulk_sync
+    bulk_updater = issuetracker_bulk_sync.IssueTrackerBulkUpdater()
+    params = getattr(task, "parameters", {})
+    return bulk_updater.sync_issuetracker(params.get("objects"))
+  except integrations_errors.Error as error:
+    logger.error('Bulk issue update failed with error: %s', error.message)
+    raise exceptions.BadRequest(error.message)
+
+
 def start_compute_attributes(revision_ids=None, event_id=None):
   """Start a background task for computed attributes."""
   background_task.create_lightweight_task(
@@ -721,3 +773,97 @@ def make_document_admin():
   clear_permission_cache()
   response = DocumentEndpoint.build_make_admin_response(request.json, docs)
   return Response(json.dumps(response), mimetype='application/json')
+
+
+@app.route("/generate_children_issues", methods=["POST"])
+@login_required
+def generate_children_issues():
+  """Generate linked issuetracker issues for children objects.
+
+  This endpoint is used to create tickets for all specific type instances
+  in scope of parent. For example it allows to create tickets for all
+  Assessments in some Audit.
+  """
+  validate_child_bulk_gen_data(request.json)
+  task_queue = create_task(
+      "generate_children_issues",
+      url_for(run_children_issues_generation.__name__),
+      run_children_issues_generation,
+      request.json,
+  )
+  return task_queue.task_scheduled_response()
+
+
+@app.route("/generate_issues", methods=["POST"])
+@login_required
+def generate_issues():
+  """Bulk generate linked issuetracker issues for provided objects.
+
+  This endpoint creates issuetracker tickets for all provided objects
+  (if such tickets haven't been created before).
+  """
+  validate_bulk_sync_data(request.json)
+  task_queue = create_task(
+      "generate_issues",
+      url_for(run_issues_generation.__name__),
+      run_issues_generation,
+      request.json,
+  )
+  return task_queue.task_scheduled_response()
+
+
+@app.route("/update_issues", methods=["POST"])
+@login_required
+def update_issues():
+  """Bulk update linked issuetracker issues for provided objects.
+
+  This endpoint update issuetracker tickets for all provided objects
+  to the current state in the app.
+  """
+  validate_bulk_sync_data(request.json)
+  task_queue = create_task(
+      "update_issues",
+      url_for(run_issues_update.__name__),
+      run_issues_update,
+      request.json,
+  )
+  return task_queue.task_scheduled_response()
+
+
+def validate_child_bulk_gen_data(json_data):
+  """Check correctness of input data for bulk child sync."""
+  if not json_data or not isinstance(json_data, dict):
+    raise exceptions.BadRequest("No data provided.")
+
+  parent_type = json_data.get("parent", {}).get("type")
+  parent_id = json_data.get("parent", {}).get("id")
+  child_type = json_data.get("child_type")
+
+  if not all((parent_id, parent_type, child_type)):
+    raise exceptions.BadRequest("Required parameters is not provided.")
+
+  parent = models.get_model(parent_type)
+  child = models.get_model(child_type)
+  from ggrc.models.mixins import issue_tracker
+  if not issubclass(parent, issue_tracker.IssueTracked) or \
+     not issubclass(child, issue_tracker.IssueTracked):
+    raise exceptions.BadRequest("Provided model is not IssueTracked.")
+
+
+def validate_bulk_sync_data(json_data):
+  """Check correctness of input data for bulk child sync."""
+  if not json_data or not isinstance(json_data, dict):
+    raise exceptions.BadRequest("No data provided.")
+
+  objects = json_data.get("objects", {})
+  if not objects or not isinstance(objects, list):
+    raise exceptions.BadRequest("Objects list is not provided.")
+
+  for obj in objects:
+    if not obj.get("id"):
+      raise exceptions.BadRequest("Object id is not provided.")
+
+    model = models.get_model(obj.get("type"))
+    from ggrc.models.mixins import issue_tracker
+    if not issubclass(model, issue_tracker.IssueTracked):
+      raise exceptions.BadRequest("Provided object is not IssueTracked.")

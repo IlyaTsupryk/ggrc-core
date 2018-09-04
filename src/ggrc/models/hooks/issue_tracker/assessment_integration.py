@@ -21,6 +21,7 @@ from ggrc.models import all_models
 from ggrc.integrations import issues
 from ggrc.integrations import integrations_errors
 from ggrc.models.hooks.issue_tracker import integration_utils
+from ggrc.rbac import permissions
 from ggrc.services import signals
 from ggrc.utils import referenced_objects
 
@@ -610,10 +611,21 @@ def _is_issue_tracker_enabled(audit=None):
   return True
 
 
-def _create_issuetracker_issue(assessment, issue_tracker_info):
-  """Collects information and sends a request to create external issue."""
-  integration_utils.normalize_issue_tracker_info(issue_tracker_info)
+def get_issue_info(obj):
+  """Retrieve IssueTrackerIssue from obj.
 
+  Args:
+      obj: Instance of IssueTracked object.
+  """
+  if hasattr(obj, "audit"):
+    issue_obj = obj.audit.issuetracker_issue
+  else:
+    issue_obj = obj.issuetracker_issue
+  return issue_obj.to_dict() if issue_obj else {}
+
+
+def get_reporter_email(assessment):
+  """Get reporter email for assessment."""
   person, acl, acr = (all_models.Person, all_models.AccessControlList,
                       all_models.AccessControlRole)
   reporter_email = db.session.query(
@@ -636,15 +648,53 @@ def _create_issuetracker_issue(assessment, issue_tracker_info):
 
   if reporter_email:
     reporter_email = reporter_email.email
+  return reporter_email
 
-  comment = [_INITIAL_COMMENT_TMPL % _get_assessment_url(assessment)]
+
+def create_asmnt_comment(assessment):
+  """Create comment for generated IssueTracker issue related to assessment.
+
+  Args:
+      assessment: Instance of Assessment for which comment should be created.
+
+  Returns:
+      String with created comments separated with '\n'.
+  """
+  comments = [_INITIAL_COMMENT_TMPL % _get_assessment_url(assessment)]
   test_plan = assessment.test_plan
   if test_plan:
-    comment.extend([
-        'Following is the assessment Requirements/Assessment Procedure '
-        'from GGRC:',
-        html2text.HTML2Text().handle(test_plan).strip('\n'),
+    comments.extend([
+        "Following is the assessment Requirements/Assessment Procedure "
+        "from GGRC:",
+        html2text.HTML2Text().handle(test_plan).strip("\n"),
     ])
+
+  return "\n".join(comments)
+
+
+def prepare_issue_json(assessment, issue_tracker_info=None):
+  """Create json that will be sent to IssueTracker.
+
+  Args:
+      assessment: Instance of Assessment.
+      issue_tracker_info: Dict with IssueTracker info.
+
+  Returns:
+      Dict with IssueTracker issue info.
+  """
+  if not issue_tracker_info:
+    issue_tracker_info = assessment.audit.issuetracker_issue.to_dict()
+    issue_tracker_info['title'] = assessment.title
+    issue_tracker_info['status'] = ASSESSMENT_STATUSES_MAPPING.get(
+        assessment.status
+    )
+
+  integration_utils.normalize_issue_tracker_info(issue_tracker_info)
+
+  assignee_email, cc_list = _collect_issue_emails(assessment)
+  if assignee_email is not None:
+    issue_tracker_info['assignee'] = assignee_email
+    issue_tracker_info['cc_list'] = cc_list
 
   hotlist_id = issue_tracker_info.get('hotlist_id')
 
@@ -655,12 +705,12 @@ def _create_issuetracker_issue(assessment, issue_tracker_info):
       'type': issue_tracker_info['issue_type'],
       'priority': issue_tracker_info['issue_priority'],
       'severity': issue_tracker_info['issue_severity'],
-      'reporter': reporter_email,
+      'reporter': get_reporter_email(assessment),
       'assignee': '',
       'verifier': '',
       'status': issue_tracker_info['status'],
       'ccs': [],
-      'comment': '\n'.join(comment),
+      'comment': create_asmnt_comment(assessment),
   }
 
   assignee = issue_tracker_info.get('assignee')
@@ -674,6 +724,12 @@ def _create_issuetracker_issue(assessment, issue_tracker_info):
   if cc_list is not None:
     issue_params['ccs'] = cc_list
 
+  return issue_params
+
+
+def _create_issuetracker_issue(assessment, issue_tracker_info):
+  """Collects information and sends a request to create external issue."""
+  issue_params = prepare_issue_json(assessment, issue_tracker_info)
   res = issues.Client().create_issue(issue_params)
   return res['issueId']
 
@@ -688,12 +744,6 @@ def _create_issuetracker_info(assessment, issue_tracker_info):
 
   if (issue_tracker_info.get('enabled') and
           _is_issue_tracker_enabled(audit=assessment.audit)):
-
-    assignee_email, cc_list = _collect_issue_emails(assessment)
-    if assignee_email is not None:
-      issue_tracker_info['assignee'] = assignee_email
-      issue_tracker_info['cc_list'] = cc_list
-
     try:
       issue_id = _create_issuetracker_issue(assessment, issue_tracker_info)
     except integrations_errors.Error as error:
@@ -783,3 +833,46 @@ def _update_issuetracker_info(assessment, issue_tracker_info):
 
   all_models.IssuetrackerIssue.create_or_update_from_dict(
       assessment, issue_tracker_info)
+
+
+def bulk_children_gen_allowed(obj):
+  """Check if user has permissions to synchronize issuetracker issue.
+
+  Args:
+      obj: Assessment instance for which issue should be generated/updated.
+
+  Returns:
+      True if it's allowed, False if not allowed.
+  """
+  return all([
+      permissions.is_allowed_update_for(obj),
+      permissions.is_allowed_update_for(obj.audit)
+  ])
+
+
+def load_issuetracked_objects(parent_type, parent_id):
+  """Fetch issuetracked objects from db."""
+  if parent_type != "Audit":
+    return []
+
+  return all_models.Assessment.query.join(
+      all_models.IssuetrackerIssue,
+      sa.and_(
+          all_models.IssuetrackerIssue.object_type == "Assessment",
+          all_models.IssuetrackerIssue.object_id == all_models.Assessment.id,
+      )
+  ).join(
+      all_models.Audit,
+      all_models.Audit.id == all_models.Assessment.audit_id,
+  ).filter(
+      all_models.Audit.id == parent_id,
+      all_models.IssuetrackerIssue.issue_id.is_(None),
+  ).options(
+      sa.orm.Load(all_models.Assessment).undefer_group(
+          "Assessment_complete",
+      ).subqueryload(
+          all_models.Assessment.audit
+      ).subqueryload(
+          all_models.Audit.issuetracker_issue
+      )
+  )

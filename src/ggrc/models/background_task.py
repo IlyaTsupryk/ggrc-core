@@ -99,6 +99,17 @@ class BackgroundTask(roleable.Roleable, base.ContextRBAC, Base, Stateful,
                               self.result['status_code'],
                               self.result['headers']))
 
+  def task_scheduled_response(self):
+    """Create success response with info about scheduled task."""
+    from ggrc.app import app
+    return self.make_response(
+        app.make_response((
+            json.dumps("scheduled %s" % self.name),
+            200,
+            [("Content-Type", "application/json")]
+        ))
+    )
+
 
 def _add_task_acl(task):
   """Add ACL entry for the current users background task."""

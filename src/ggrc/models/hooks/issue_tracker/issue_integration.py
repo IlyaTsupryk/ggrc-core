@@ -182,3 +182,23 @@ def create_comment_handler(sync_object, comment, author):
     logger.error("Unable to add comment to ticket issue ID=%d: %s",
                  issue_tracker_object.issue_id, error)
     sync_object.add_warning("Unable to update a ticket in issue tracker.")
+
+
+def prepare_issue_json(issue, issue_tracker_info=None):
+  """Prepare issuetracker issue json for Issue object."""
+  if not issue_tracker_info:
+    issue_tracker_info = issue.issuetracker_issue.to_dict()
+
+  builder = issue_tracker_params_builder.IssueParamsBuilder()
+  issue_tracker_params = builder.build_create_issue_tracker_params(
+      issue,
+      issue_tracker_info
+  )
+
+  if issue_tracker_params.is_empty():
+    return {}
+
+  params = issue_tracker_params.get_issue_tracker_params()
+  if "type" not in params:
+    params["type"] = issue_tracker_info.get("issue_type")
+  return params
