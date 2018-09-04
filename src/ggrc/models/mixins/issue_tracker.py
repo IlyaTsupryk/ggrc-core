@@ -51,6 +51,7 @@ class IssueTracked(object):
         primaryjoin=join_function,
         backref="{}_issue_tracked".format(cls.__name__),
         cascade="all, delete-orphan",
+        uselist=False,
     )
 
   @simple_property
@@ -58,7 +59,7 @@ class IssueTracked(object):
     """Returns representation of issue tracker related info as a dict."""
     issue_info = self.issuetracker_issue
     if issue_info:
-      issue_tracker_attrs = issue_info[0].to_dict(include_issue=True)
+      issue_tracker_attrs = issue_info.to_dict(include_issue=True)
     else:
       issue_tracker_attrs = IssuetrackerIssue.get_issuetracker_issue_stub()
 

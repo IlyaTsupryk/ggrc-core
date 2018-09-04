@@ -721,3 +721,63 @@ def make_document_admin():
   clear_permission_cache()
   response = DocumentEndpoint.build_make_admin_response(request.json, docs)
   return Response(json.dumps(response), mimetype='application/json')
+
+
+@app.route('/generate_children_issues', methods=['POST'])
+@login_required
+def generate_children_issues():
+  """Generate linked buganizer issues for provided objects."""
+  from ggrc.integrations import issuetracker_bulk_sync
+  task_queue = create_task(
+      "generate_children_issues",
+      url_for(issuetracker_bulk_sync.run_children_issues_generation.__name__),
+      issuetracker_bulk_sync.run_children_issues_generation,
+      request.json,
+  )
+  return task_queue.make_response(
+      app.make_response((
+          "scheduled %s" % task_queue.name,
+          200,
+          [('Content-Type', 'text/html')]
+      ))
+  )
+
+
+@app.route('/generate_issues', methods=['POST'])
+@login_required
+def generate_issues():
+  """Generate linked buganizer issues for provided objects."""
+  from ggrc.integrations import issuetracker_bulk_sync
+  task_queue = create_task(
+      "generate_issues",
+      url_for(issuetracker_bulk_sync.run_issues_generation.__name__),
+      issuetracker_bulk_sync.run_issues_generation,
+      request.json,
+  )
+  return task_queue.make_response(
+      app.make_response((
+          "scheduled %s" % task_queue.name,
+          200,
+          [('Content-Type', 'text/html')]
+      ))
+  )
+
+
+@app.route('/update_issues', methods=['POST'])
+@login_required
+def update_issues():
+  """Generate linked buganizer issues for provided objects."""
+  from ggrc.integrations import issuetracker_bulk_sync
+  task_queue = create_task(
+      "update_issues",
+      url_for(issuetracker_bulk_sync.run_issues_update.__name__),
+      issuetracker_bulk_sync.run_issues_update,
+      request.json,
+  )
+  return task_queue.make_response(
+      app.make_response((
+          "scheduled %s" % task_queue.name,
+          200,
+          [('Content-Type', 'text/html')]
+      ))
+  )

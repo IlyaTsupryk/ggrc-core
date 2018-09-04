@@ -121,3 +121,22 @@ def update_issue(cli, issue_id, params, max_attempts=5, interval=1):
         time.sleep(interval)
         continue
     break
+
+
+def create_issue(cli, params, max_attempts=5, interval=1):
+  """Performs issue create request."""
+  attempts = max_attempts
+  while True:
+    attempts -= 1
+    try:
+      return cli.update_issue(params)
+    except integrations_errors.HttpError as error:
+      if error.status == 429:
+        if attempts == 0:
+          raise
+        logger.warning(
+            'The request creating ticket was rate limited and '
+            'will be re-tried: %s', error)
+        time.sleep(interval)
+        continue
+    break
