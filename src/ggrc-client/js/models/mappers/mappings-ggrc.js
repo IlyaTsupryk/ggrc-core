@@ -58,7 +58,7 @@ const scopingObjects = [
       _mixins: ['related_object'],
     },
     Document: {
-      _mixins: ['business_object'],
+      _mixins: ['related_object'],
     },
     assignable: {
       info_related_objects: CustomFilter('related_objects',
