@@ -18,6 +18,21 @@ import Mappings from './mappings';
 import CustomAttributeDefinition from '../custom-attributes/custom-attribute-definition';
 import AccessControlRole from '../custom-roles/access-control-role';
 
+const businessObjects = [
+  'Metric', 'TechnologyEnvironment', 'AccessGroup',
+  'DataAsset', 'Facility', 'Market', 'OrgGroup', 'Vendor', 'Process',
+  'Product', 'ProductGroup', 'Project', 'System', 'Regulation',
+  'Policy', 'Contract', 'Standard', 'Program', 'Issue', 'Control',
+  'Requirement', 'Objective', 'Audit', 'Assessment',
+  'AssessmentTemplate', 'Risk', 'Threat', 'Document',
+];
+
+const scopingObjects = [
+  'Metric', 'TechnologyEnvironment', 'AccessGroup',
+  'DataAsset', 'Facility', 'Market', 'OrgGroup', 'Vendor', 'Process',
+  'Product', 'ProductGroup', 'Project', 'System',
+];
+
 (function (GGRC, can) {
   new Mappings('ggrc_core', {
     base: {},
@@ -54,14 +69,7 @@ import AccessControlRole from '../custom-roles/access-control-role';
     },
     related_object: {
       _canonical: {
-        related_objects_as_source: [
-          'DataAsset', 'Facility', 'Market', 'OrgGroup', 'Vendor', 'Process',
-          'Product', 'ProductGroup', 'Project', 'System', 'Regulation',
-          'Policy', 'Contract', 'Standard', 'Program', 'Issue', 'Control',
-          'Requirement', 'Objective', 'Audit', 'Assessment',
-          'AssessmentTemplate', 'AccessGroup', 'Risk', 'Threat', 'Document',
-          'Metric', 'TechnologyEnvironment',
-        ],
+        related_objects_as_source: businessObjects,
       },
       related_objects_as_source: Proxy(
         null, 'destination', 'Relationship', 'source', 'related_destinations'),
@@ -152,12 +160,20 @@ import AccessControlRole from '../custom-roles/access-control-role';
     // Directives
     Regulation: {
       _mixins: ['directive_object'],
+      _canonical: {
+        related_objects_as_source: _.difference(
+          businessObjects, scopingObjects),
+      },
     },
     Contract: {
       _mixins: ['directive_object'],
     },
     Standard: {
       _mixins: ['directive_object'],
+      _canonical: {
+        related_objects_as_source: _.difference(
+          businessObjects, scopingObjects),
+      },
     },
     Policy: {
       _mixins: ['directive_object'],
@@ -168,6 +184,10 @@ import AccessControlRole from '../custom-roles/access-control-role';
       _mixins: [
         'related_object',
       ],
+      _canonical: {
+        related_objects_as_source: _.difference(businessObjects,
+          ['Standard', 'Regulation']),
+      },
       orphaned_objects: Multi([
         'related_objects', 'controls', 'objectives', 'requirements',
       ]),
