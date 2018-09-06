@@ -601,6 +601,32 @@ def get_task_response(id_task):
   return make_task_response(id_task)
 
 
+@app.route(
+    "/background_task_status/<object_type>/<object_id>",
+    methods=['GET']
+)
+def get_background_task_status(object_type, object_id):
+  """Gets the status of a background task which was created for object."""
+  task = models.BackgroundTask.query.options(
+      sqlalchemy.orm.undefer_group("BackgroundTask_complete"),
+      sqlalchemy.orm.joinedload("background_operation"),
+  ).filter_by(
+      object_type=object_type,
+      object_id=object_id,
+  ).order_by(
+      models.BackgroundTask.created_at.desc()
+  ).first()
+  if task:
+    body = task.log_json()
+    return app.make_response(
+        (json.dumps(body), 200, [("Content-Type", "application/json")])
+    )
+  else:
+    return app.make_response(
+        ("", 404, [("Content-Type", "application/json")])
+    )
+
+
 def contributed_object_views():
   """Contributed object views"""
 
@@ -733,6 +759,7 @@ def generate_children_issues():
       url_for(issuetracker_bulk_sync.run_children_issues_generation.__name__),
       issuetracker_bulk_sync.run_children_issues_generation,
       request.json,
+      operation="generate_children_issues",
   )
   return task_queue.make_response(
       app.make_response((

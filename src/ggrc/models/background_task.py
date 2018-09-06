@@ -10,6 +10,8 @@ from logging import getLogger
 from functools import wraps
 from time import time
 
+from sqlalchemy.ext.declarative import declared_attr
+
 from flask import request
 from flask.wrappers import Response
 from werkzeug.datastructures import Headers
@@ -56,6 +58,16 @@ class BackgroundTask(roleable.Roleable, base.ContextRBAC, Base, Stateful,
   name = deferred(db.Column(db.String), 'BackgroundTask')
   parameters = deferred(db.Column(CompressedType), 'BackgroundTask')
   result = deferred(db.Column(CompressedType), 'BackgroundTask')
+  object_type = deferred(db.Column(db.String), 'BackgroundTask')
+  object_id = deferred(db.Column(db.Integer), 'BackgroundTask')
+  background_operation_id = deferred(
+      db.Column(db.Integer, db.ForeignKey('background_operations.id')),
+      'BackgroundTask'
+  )
+
+  @declared_attr
+  def background_operation(cls):
+    return db.relationship("BackgroundOperation")
 
   _api_attrs = reflection.ApiAttributes('name', 'result')
 
@@ -122,7 +134,8 @@ def collect_task_headers():
   return Headers({k: v for k, v in request.headers if k not in BANNED_HEADERS})
 
 
-def create_task(name, url, queued_callback=None, parameters=None, method=None):
+def create_task(name, url, queued_callback=None, parameters=None, method=None,
+                operation=None):
   """Create a enqueue a bacground task."""
   if not method:
     method = request.method
@@ -131,7 +144,21 @@ def create_task(name, url, queued_callback=None, parameters=None, method=None):
   if not parameters:
     parameters = {}
 
-  task = BackgroundTask(name=name + str(int(time())))
+  bg_operation = None
+  if operation:
+    from ggrc import models
+    bg_operation = models.BackgroundOperation.query.filter_by(
+        name=operation
+    ).first()
+
+  parent_type = parameters.get("parent", {}).get("type")
+  parent_id = parameters.get("parent", {}).get("id")
+  task = BackgroundTask(
+      name=name + str(int(time())),
+      object_type=parent_type,
+      object_id=parent_id,
+      background_operation=bg_operation,
+  )
   task.parameters = parameters
   task.modified_by = get_current_user()
   _add_task_acl(task)
