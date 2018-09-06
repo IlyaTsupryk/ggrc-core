@@ -733,6 +733,7 @@ def generate_children_issues():
       url_for(issuetracker_bulk_sync.run_children_issues_generation.__name__),
       issuetracker_bulk_sync.run_children_issues_generation,
       request.json,
+      operation="generate_children_issues",
   )
   return task_queue.make_response(
       app.make_response((
