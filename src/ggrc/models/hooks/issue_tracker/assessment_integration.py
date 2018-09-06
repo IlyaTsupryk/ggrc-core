@@ -396,8 +396,8 @@ def init_hook():
 
 def start_update_issue_job(audit_id, message):
   """Creates background job for handling IssueTracker issue update."""
-  from ggrc import views
-  views.start_update_audit_issues(audit_id, message)
+  import ggrc
+  ggrc.views.start_update_audit_issues(audit_id, message)
 
 
 def handle_assessment_create(assessment, src):
