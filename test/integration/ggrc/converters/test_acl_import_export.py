@@ -9,25 +9,10 @@ from collections import OrderedDict
 import ddt
 
 from ggrc import models
+from ggrc.models.scoping_models import SCOPING_MODELS_NAMES
 from ggrc.converters import errors
 from integration.ggrc import TestCase
 from integration.ggrc.models import factories
-
-SCOPING_OBJECTS = {
-    "Access Group",
-    "Data Asset",
-    "Facility",
-    "Market",
-    "Metric",
-    "Org Group",
-    "Process",
-    "Product",
-    "ProductGroup",
-    "Project",
-    "System",
-    "TechnologyEnvironment",
-    "Vendor",
-}
 
 
 @ddt.ddt
@@ -196,11 +181,12 @@ class TestACLImportExport(TestCase):
         ("object_type", object_type),
         ("code", "{}-1".format(object_type.lower())),
         ("title", "Title"),
+        ("title", "Title"),
         ("Admin", "user@example.com"),
     ])
     if object_type == "Control":
       import_dict["Assertions*"] = "Privacy"
-    if object_type in SCOPING_OBJECTS:
+    if object_type in SCOPING_MODELS_NAMES:
       import_dict["Assignee"] = "user@example.com"
       import_dict["Verifier"] = "user@example.com"
     for role_name, emails in roles.items():

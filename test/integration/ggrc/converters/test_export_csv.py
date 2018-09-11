@@ -8,28 +8,13 @@ from flask.json import dumps
 
 from ggrc.converters import get_importables
 from ggrc.models import inflector
+from ggrc.models.scoping_models import SCOPING_MODELS_NAMES
 from ggrc.models.reflection import AttributeInfo
 from integration.ggrc import TestCase
 from integration.ggrc.models import factories
 
 THIS_ABS_PATH = abspath(dirname(__file__))
 CSV_DIR = join(THIS_ABS_PATH, 'test_csvs/')
-
-SCOPING_OBJECTS = {
-    "Access Group",
-    "Data Asset",
-    "Facility",
-    "Market",
-    "Metric",
-    "Org Group",
-    "Process",
-    "Product",
-    "ProductGroup",
-    "Project",
-    "System",
-    "TechnologyEnvironment",
-    "Vendor",
-}
 
 
 class TestExportEmptyTemplate(TestCase):
@@ -575,7 +560,7 @@ class TestExportMultipleObjects(TestCase):
       ]))
       if model == "Control":
         import_queries[-1]["Assertions"] = "Privacy"
-      if model in SCOPING_OBJECTS:
+      if model in SCOPING_MODELS_NAMES:
         import_queries[-1]["Assignee"] = "user@example.com"
         import_queries[-1]["Verifier"] = "user@example.com"
 
