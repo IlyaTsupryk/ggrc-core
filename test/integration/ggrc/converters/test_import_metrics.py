@@ -3,6 +3,7 @@
 
 """Tests for task group task specific export."""
 from integration.ggrc import TestCase
+from ggrc.converters import errors
 
 
 class TestMetricsImport(TestCase):
@@ -15,5 +16,22 @@ class TestMetricsImport(TestCase):
   def test_metrics_import(self):
     """Test metrics import"""
     filename = "import_metrics.csv"
-    response = self.import_file(filename)
-    self.assertEqual(response[0]["created"], 2)
+    response = self._import_file(filename)
+    metric_response = response[2]
+    self.assertEqual(metric_response["created"], 3)
+    self._check_csv_response(response, {
+        "Metric": {
+            "row_warnings": {
+                errors.MAPPING_SCOPING_ERROR.format(
+                    line=14,
+                    object_type="Regulation",
+                    action="map",
+                ),
+                errors.MAPPING_SCOPING_ERROR.format(
+                    line=15,
+                    object_type="Standard",
+                    action="map",
+                ),
+            },
+        }
+    })

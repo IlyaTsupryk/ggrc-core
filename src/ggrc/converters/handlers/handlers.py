@@ -466,17 +466,24 @@ class MappingColumnHandler(ColumnHandler):
     lines = set(self.raw_value.splitlines())
     slugs = set([slug.lower() for slug in lines if slug.strip()])
     objects = []
+
     for slug in slugs:
       obj = class_.query.filter_by(slug=slug).first()
       if obj:
-        if permissions.is_allowed_update_for(obj):
-          objects.append(obj)
-        else:
+        is_allowed_by_type = self._is_allowed_mapping_by_type(
+            source_type=self.row_converter.obj.__class__.__name__,
+            destination_type=class_.__name__
+        )
+        if not is_allowed_by_type:
+          continue
+        if not permissions.is_allowed_update_for(obj):
           self.add_warning(
               errors.MAPPING_PERMISSION_ERROR,
               object_type=class_._inflector.human_singular.title(),
               slug=slug,
           )
+          continue
+        objects.append(obj)
       elif slug in self.new_slugs and not self.dry_run:
         objects.append(self.new_slugs[slug])
       elif slug in self.new_slugs and self.dry_run:
@@ -490,6 +497,21 @@ class MappingColumnHandler(ColumnHandler):
     if self.mandatory and not objects and self.row_converter.is_new:
       self.add_error(errors.MISSING_VALUE_ERROR, column_name=self.display_name)
     return objects
+
+  def _is_allowed_mapping_by_type(self, source_type, destination_type):
+    """Checks if a mapping is allowed between given types."""
+    from ggrc.models.scoping_models import SCOPING_MODELS_NAMES
+    if source_type in SCOPING_MODELS_NAMES and \
+       destination_type in ("Regulation", "Standard") or \
+       source_type in SCOPING_MODELS_NAMES and \
+       destination_type in ("Regulation", "Standard"):
+      self.add_warning(
+          errors.MAPPING_SCOPING_ERROR,
+          object_type=destination_type,
+          action="unmap" if self.unmap else "map"
+      )
+      return False
+    return True
 
   def set_obj_attr(self):
     self.value = self.parse_item()

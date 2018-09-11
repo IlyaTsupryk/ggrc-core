@@ -147,6 +147,8 @@ class Relationship(base.ContextRBAC, Base, db.Model):
                             u"Relatable type: {}".format(value.type))
     tgt_type = self.source_type
     tgt_id = self.source_id
+    self.validate_relation_by_type(self.source_type, self.destination_type)
+
     if field == "source":
       tgt_type = self.destination_type
       tgt_id = self.destination_id
@@ -183,9 +185,24 @@ class Relationship(base.ContextRBAC, Base, db.Model):
   @staticmethod
   def validate_delete(mapper, connection, target):
     """Validates is delete of Relationship is allowed."""
+    Relationship.validate_relation_by_type(target.source_type,
+                                           target.destination_type)
     if is_external_app_user() and not target.is_external:
       raise ValidationError(
           'External application can delete only external relationships.')
+
+  @staticmethod
+  def validate_relation_by_type(source_type, destination_type):
+    """Checks if a mapping is allowed between given types."""
+    from ggrc.models.scoping_models import SCOPING_MODELS_NAMES
+    if source_type in SCOPING_MODELS_NAMES and \
+       destination_type in ("Regulation", "Standard") or \
+       destination_type in SCOPING_MODELS_NAMES and \
+       source_type in ("Regulation", "Standard"):
+      raise ValidationError(
+          u"You do not have the necessary permissions to map and unmap "
+          u"scoping objects to directives in this application. Please "
+          u"contact your administrator if you have any questions.")
 
 
 class Relatable(object):

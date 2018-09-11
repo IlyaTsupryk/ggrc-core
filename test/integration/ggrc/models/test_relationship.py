@@ -8,6 +8,7 @@ import json
 import ddt
 
 from ggrc.models import all_models
+from ggrc.models.scoping_models import SCOPING_MODELS_NAMES
 from ggrc.models.exceptions import ValidationError
 
 from integration.ggrc import TestCase
@@ -35,6 +36,9 @@ class TestRelationship(TestCase):
       "X-requested-by": "GGRC",
   }
   REL_URL = "/api/relationships"
+
+  SCOPING_OBJECT_FACTORIES = [
+      factories.get_model_factory(name) for name in SCOPING_MODELS_NAMES]
 
   @staticmethod
   def build_relationship_json(source, destination):
@@ -91,7 +95,7 @@ class TestRelationship(TestCase):
     self.assertEqual(url_list, [])
 
   def test_relationship_disallowed_type(self):
-    """Validation fails when source-destination types pair disallowed."""
+    """Validation fails when source-destination are snapshottable."""
     audit = factories.AuditFactory()
     snapshottable = factories.ControlFactory()
 
@@ -109,6 +113,19 @@ class TestRelationship(TestCase):
       factories.RelationshipFactory(source=snapshottable, destination=snapshot)
     with self.assertRaises(ValidationError):
       factories.RelationshipFactory(source=snapshot, destination=snapshottable)
+
+  @ddt.data(*SCOPING_OBJECT_FACTORIES)
+  def test_relationship_scoping_directive(self, factory):
+    """Validation fails when source-destination types pair disallowed."""
+    scoping_object = factory()
+    directive = factories.DirectiveFactory()
+
+    with self.assertRaises(ValidationError):
+      factories.RelationshipFactory(source=scoping_object,
+                                    destination=directive)
+    with self.assertRaises(ValidationError):
+      factories.RelationshipFactory(source=directive,
+                                    destination=scoping_object)
 
 
 class TestExternalRelationship(TestCase):

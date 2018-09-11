@@ -37,15 +37,15 @@ class TestBaseBlock(TestCase):
 
     with factories.single_commit():
       regulations = [factories.RegulationFactory() for _ in range(count)]
-      markets = [factories.MarketFactory() for _ in range(count)]
+      requirements = [factories.RequirementFactory() for _ in range(count)]
       controls = [factories.ControlFactory() for _ in range(count)]
 
       expected_cache = defaultdict(lambda: defaultdict(list))
       for i in range(count):
         for j in range(i):
           factories.RelationshipFactory(
-              source=regulations[j] if i % 2 == 0 else markets[i],
-              destination=regulations[j] if i % 2 == 1 else markets[i],
+              source=regulations[j] if i % 2 == 0 else requirements[i],
+              destination=regulations[j] if i % 2 == 1 else requirements[i],
           )
           factories.RelationshipFactory(
               source=regulations[j] if i % 2 == 0 else controls[i],
@@ -54,8 +54,8 @@ class TestBaseBlock(TestCase):
           expected_cache[regulations[j].id]["Control"].append(
               controls[i].slug
           )
-          expected_cache[regulations[j].id]["Market"].append(
-              markets[i].slug
+          expected_cache[regulations[j].id]["Requirement"].append(
+              requirements[i].slug
           )
 
     block = base_block.ExportBlockConverter(
@@ -80,18 +80,18 @@ class TestBaseBlock(TestCase):
 
     with factories.single_commit():
       regulation = factories.RegulationFactory()
-      markets = [factories.MarketFactory() for _ in range(count)]
+      requirements = [factories.RequirementFactory() for _ in range(count)]
       controls = [factories.ControlFactory() for _ in range(count)]
       expected_id_map = {
-          "Market": {o.id: o.slug for o in markets},
+          "Requirement": {o.id: o.slug for o in requirements},
           "Control": {o.id: o.slug for o in controls},
       }
 
       relationships = []
       for i in range(count):
         relationships.append(factories.RelationshipFactory(
-            source=regulation if i % 2 == 0 else markets[i],
-            destination=regulation if i % 2 == 1 else markets[i],
+            source=regulation if i % 2 == 0 else requirements[i],
+            destination=regulation if i % 2 == 1 else requirements[i],
         ))
         relationships.append(factories.RelationshipFactory(
             source=regulation if i % 2 == 0 else controls[i],

@@ -1,3 +1,31 @@
+Object type,"Must be unique.  Can be left empty for autogeneration.  If updating or deleting, code is required",,,"if owner is not provided, current user will be reated as owner of the object","Default value 'draft' is selected
+Other values are:
+Final
+Effective
+Ineffective
+Launched
+Not Launched
+In Scope
+Not in Scope
+Deprecated",,,,,,MM/DD/YYYY,,,,
+Regulation,code*,title*,description,admin,state,notes,primary contacts,,,secondary contacts,effective date,reference url,map:program,,
+,reg-1,reg 1,test,user@example.com,Draft,this is a note,user@example.com,,,user@example.com,7/1/2015,google.com,,,
+,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,
+Object type,"Must be unique.  Can be left empty for autogeneration.  If updating or deleting, code is required",,,"if owner is not provided, current user will be reated as owner of the object","Default value 'draft' is selected
+Other values are:
+Final
+Effective
+Ineffective
+Launched
+Not Launched
+In Scope
+Not in Scope
+Deprecated",,,,,,MM/DD/YYYY,,,,
+Standard,code*,title*,description,admin,state,notes,primary contacts,,,secondary contacts,effective date,reference url,map:program,,
+,std-1,std 1,test,user@example.com,Draft,this is a note,user@example.com,,,user@example.com,7/1/2015,google.com,,,
+,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,
 Object type,"Must be unique. Can be left empty for auto generation. If updating or deleting, code is required",,,,,,,"Options are:
 Draft
 Active
@@ -5,6 +33,7 @@ Deprecated",New line separated list of Reference URLs.,,,"New line separated lis
 Example:
 
 http://my.gdrive.link/file Title of the evidence link",,,,,List of people with 'Admin' role,List of people with 'Compliance Contacts' role,List of people with 'Primary Contacts' role, List of people with 'Secondary Contacts' role,List of people with 'Assignee' role, List of people with 'Verifier' role,"DELIMITER="";;"" double semi-colon separated values",
-Metric,Code*,Title*,Description,Notes,Assessment Procedure,Effective Date,Last Deprecated Date,Launch Status,Reference URL,Recipients,Send by default,Document File,Last Updated Date,Last Updated By,Created Date,Delete,Admin*,Compliance Contacts,Primary Contacts,Secondary Contacts,Assignee,Verifier,,Comments
-,METRIC-9,title 1,,,,,,Draft,,"Assignees,Creators,Verifiers",yes,,05/25/2018,,05/25/2018,,user@example.com,user@example.com,user@example.com,,user@example.com,user@example.com,,
-,METRIC-10,title 2,,,,,,Draft,,"Assignees,Creators,Verifiers",yes,,05/25/2018,,05/25/2018,,user@example.com,user@example.com,user@example.com,,user@example.com,user@example.com,,
+Metric,Code*,Title*,Description,Notes,Assessment Procedure,Effective Date,Last Deprecated Date,Launch Status,Reference URL,Recipients,Send by default,Document File,Last Updated Date,Last Updated By,Created Date,Delete,Admin*,Compliance Contacts,Primary Contacts,Secondary Contacts,Assignee,Verifier,,Comments,map:regulation,map:standard
+,METRIC-9,title 1,,,,,,Draft,,"Assignees,Creators,Verifiers",yes,,05/25/2018,,05/25/2018,,user@example.com,user@example.com,user@example.com,,user@example.com,user@example.com,,,,
+,METRIC-10,title 2,,,,,,Draft,,"Assignees,Creators,Verifiers",yes,,05/25/2018,,05/25/2018,,user@example.com,user@example.com,user@example.com,,user@example.com,user@example.com,,,reg-1,
+,METRIC-11,title 3,,,,,,Draft,,"Assignees,Creators,Verifiers",yes,,05/25/2018,,05/25/2018,,user@example.com,user@example.com,user@example.com,,user@example.com,user@example.com,,,,std-1
