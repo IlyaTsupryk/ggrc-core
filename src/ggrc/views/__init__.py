@@ -9,6 +9,7 @@ import collections
 import json
 import logging
 
+import datetime
 import sqlalchemy
 from sqlalchemy import true
 from flask import flash
@@ -184,7 +185,13 @@ def run_children_issues_generation(task):
 
     from ggrc.integrations import issuetracker_bulk_sync
     bulk_creator = issuetracker_bulk_sync.IssueTrackerBulkChildCreator()
-    return bulk_creator.sync_issuetracker(parent_type, parent_id, child_type)
+    response = bulk_creator.sync_issuetracker(
+        parent_type, parent_id, child_type
+    )
+    update_bulk_sync_history(
+        task.id, bulk_creator.created, bulk_creator.failed
+    )
+    return response
   except integrations_errors.Error as error:
     logger.error('Bulk issue generation failed with error: %s', error.message)
     raise exceptions.BadRequest(error.message)
@@ -200,7 +207,11 @@ def run_issues_generation(task):
     from ggrc.integrations import issuetracker_bulk_sync
     bulk_creator = issuetracker_bulk_sync.IssueTrackerBulkCreator()
     params = getattr(task, "parameters", {})
-    return bulk_creator.sync_issuetracker(params.get("objects"))
+    response = bulk_creator.sync_issuetracker(params.get("objects"))
+    update_bulk_sync_history(
+        task.id, bulk_creator.created, bulk_creator.failed
+    )
+    return response
   except integrations_errors.Error as error:
     logger.error('Bulk issue generation failed with error: %s', error.message)
     raise exceptions.BadRequest(error.message)
@@ -216,7 +227,11 @@ def run_issues_update(task):
     from ggrc.integrations import issuetracker_bulk_sync
     bulk_updater = issuetracker_bulk_sync.IssueTrackerBulkUpdater()
     params = getattr(task, "parameters", {})
-    return bulk_updater.sync_issuetracker(params.get("objects"))
+    response = bulk_updater.sync_issuetracker(params.get("objects"))
+    update_bulk_sync_history(
+        task.id, bulk_updater.created, bulk_updater.failed
+    )
+    return response
   except integrations_errors.Error as error:
     logger.error('Bulk issue update failed with error: %s', error.message)
     raise exceptions.BadRequest(error.message)
@@ -867,3 +882,38 @@ def validate_bulk_sync_data(json_data):
     from ggrc.models.mixins import issue_tracker
     if not issubclass(model, issue_tracker.IssueTracked):
       raise exceptions.BadRequest("Provided object is not IssueTracked.")
+
+def update_bulk_sync_history(task_id, created, failed):
+  """Save information about objects synchronized with issuetracker."""
+  import ipdb;ipdb.set_trace()
+  with benchmark("Save information about created and failed objects"):
+    created_history = [
+        {
+            "bg_task_id": task_id,
+            "object_type": obj_type,
+            "object_id": obj_id,
+            "result": "1",
+            "error": None,
+            "modified_by_id": get_current_user().id,
+            "created_at": datetime.datetime.now(),
+            "updated_at": datetime.datetime.now(),
+        } for obj_type, obj_id in created
+    ]
+    failed_history = [
+        {
+            "bg_task_id": task_id,
+            "object_type": obj.type,
+            "object_id": obj.id,
+            "result": "0",
+            "error": err,
+            "modified_by_id": get_current_user().id,
+            "created_at": datetime.datetime.now(),
+            "updated_at": datetime.datetime.now(),
+        } for obj, err in failed
+    ]
+    db.session.execute(
+        all_models.IssuetrackerSyncHistory.__table__.insert().values(
+            created_history + failed_history
+        )
+    )
+    db.session.plain_commit()
