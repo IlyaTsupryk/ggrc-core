@@ -449,6 +449,38 @@ class TestBulkIssuesGenerate(TestBulkIssuesSync):
     self.assertIn(assmt.title, body)
     self.assertIn(data_handlers.get_object_url(assmt), body)
 
+  def test_issuetracker_sync_history(self):
+    """Test if issuetracker_sync_history table updated with failed objs."""
+    _, assessment_ids = self.setup_assessments(3)
+    with mock.patch(
+        "ggrc.integrations.issues.Client.create_issue",
+        side_effect=integrations_errors.HttpError(data="Test Error")
+    ):
+      response = self.api.send_request(
+          self.api.client.post,
+          api_link="/generate_issues",
+          data={
+              "objects": [{
+                  "type": "Assessment",
+                  "id": id_
+              } for id_ in assessment_ids],
+          }
+      )
+      self.assert200(response)
+
+    sync_history = all_models.IssuetrackerSyncHistory
+    history = sync_history.query.join(
+        all_models.BackgroundTask,
+        all_models.BackgroundTask.id == sync_history.bg_task_id
+    ).filter(
+        sync_history.object_type == "Assessment",
+        sync_history.object_id.in_(assessment_ids),
+    )
+    self.assertEqual(history.count(), len(assessment_ids))
+    for sync_res in history:
+      self.assertEqual(sync_res.result, False)
+      self.assertEqual(sync_res.error, "500 Test Error")
+
 
 @ddt.ddt
 class TestBulkIssuesChildGenerate(TestBulkIssuesSync):
