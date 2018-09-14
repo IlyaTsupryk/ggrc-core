@@ -67,6 +67,8 @@ class IssueTrackerBulkCreator(object):
   def __init__(self):
     self.break_on_errs = False
     self.client = issues.Client()
+    self.created = []
+    self.failed = []
 
   def sync_issuetracker(self, objects_data, filename='', recipient=''):
     """Generate IssueTracker issues in bulk.
@@ -88,18 +90,20 @@ class IssueTrackerBulkCreator(object):
                 IssuetrackedObjInfo(obj, *obj_id_info[obj.id])
             )
 
-      created, errors = self.handle_issuetracker_sync(issuetracked_info)
+      self.created, self.failed = self.handle_issuetracker_sync(
+          issuetracked_info
+      )
 
       logger.info(
           "Synchronized issues count: %s, failed count: %s",
-          len(created),
-          len(errors),
+          len(self.created),
+          len(self.failed),
       )
     except:  # pylint: disable=bare-except
       self.send_notification(filename, recipient, failed=True)
     else:
-      self.send_notification(filename, recipient, errors=errors)
-    return self.make_response(errors)
+      self.send_notification(filename, recipient, errors=self.failed)
+    return self.make_response(self.failed)
 
   @staticmethod
   def group_objs_by_type(object_data):
@@ -496,7 +500,6 @@ class IssueTrackerBulkChildCreator(IssueTrackerBulkCreator):
     Returns:
         flask.wrappers.Response - response with result of generation.
     """
-    errors = []
     try:
       issuetracked_info = []
       with benchmark("Load issuetracked objects from database"):
@@ -511,15 +514,17 @@ class IssueTrackerBulkChildCreator(IssueTrackerBulkCreator):
         for obj in handler.load_issuetracked_objects(parent_type, parent_id):
           issuetracked_info.append(IssuetrackedObjInfo(obj))
 
-      created, errors = self.handle_issuetracker_sync(issuetracked_info)
+      self.created, self.failed = self.handle_issuetracker_sync(
+          issuetracked_info
+      )
 
       logger.info("Synchronized issues count: %s, failed count: %s",
-                  len(created), len(errors))
+                  len(self.created), len(self.failed))
     except:  # pylint: disable=bare-except
       self.send_notification(parent_type, parent_id, failed=True)
     else:
-      self.send_notification(parent_type, parent_id, errors=errors)
-    return self.make_response(errors)
+      self.send_notification(parent_type, parent_id, errors=self.failed)
+    return self.make_response(self.failed)
 
   def bulk_sync_allowed(self, obj):
     """Check if user has permissions to synchronize issuetracker issue.

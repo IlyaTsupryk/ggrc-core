@@ -46,6 +46,7 @@ from ggrc.models.facility import Facility
 from ggrc.models.import_export import ImportExport
 from ggrc.models.issue import Issue
 from ggrc.models.issuetracker_issue import IssuetrackerIssue
+from ggrc.models.issuetracker_sync_history import IssuetrackerSyncHistory
 from ggrc.models.label import Label
 from ggrc.models.maintenance import Maintenance
 from ggrc.models.market import Market
@@ -122,6 +123,7 @@ all_models = [  # pylint: disable=invalid-name
     ImportExport,
     Issue,
     IssuetrackerIssue,
+    IssuetrackerSyncHistory,
     Label,
     Maintenance,
     Market,
