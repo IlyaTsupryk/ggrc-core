@@ -36,7 +36,6 @@ class CategoryBase(base.ContextRBAC, Base, db.Model):
   name = deferred(db.Column(db.String), 'CategoryBase')
   lft = deferred(db.Column(db.Integer), 'CategoryBase')
   rgt = deferred(db.Column(db.Integer), 'CategoryBase')
-  scope_id = deferred(db.Column(db.Integer), 'CategoryBase')
   depth = deferred(db.Column(db.Integer), 'CategoryBase')
   required = deferred(db.Column(db.Boolean), 'CategoryBase')
 

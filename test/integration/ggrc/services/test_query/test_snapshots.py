@@ -817,7 +817,7 @@ class TestSnapshotIndexing(TestCase, WithQueryApi):
       program = factories.ProgramFactory()
       program_id = program.id
 
-      category = factories.ControlCategoryFactory(scope_id=100)
+      category = factories.ControlCategoryFactory()
       category_id = category.id
       control = factories.ControlFactory()
       control.categories.append(category)

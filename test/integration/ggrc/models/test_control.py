@@ -21,7 +21,7 @@ class TestControl(TestCase):
 
   def test_simple_categorization(self):
     """Check append category append to control."""
-    category = factories.ControlCategoryFactory(scope_id=100)
+    category = factories.ControlCategoryFactory()
     control = factories.ControlFactory()
     control.categories.append(category)
     db.session.commit()

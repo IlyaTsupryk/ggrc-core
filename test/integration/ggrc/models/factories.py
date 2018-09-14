@@ -160,7 +160,6 @@ class ControlCategoryFactory(ModelFactory):
   name = factory.LazyAttribute(lambda m: random_str(prefix='name'))
   lft = None
   rgt = None
-  scope_id = None
   depth = None
   required = None
 
