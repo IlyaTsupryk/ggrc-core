@@ -194,6 +194,11 @@ class Relationship(base.ContextRBAC, Base, db.Model):
   @staticmethod
   def validate_relation_by_type(source_type, destination_type):
     """Checks if a mapping is allowed between given types."""
+    if is_external_app_user():
+      # external users can map and unmap scoping objects
+      # check that relationship is external is done in a separate validator
+      return
+
     from ggrc.models.scoping_models import SCOPING_MODELS_NAMES
     if source_type in SCOPING_MODELS_NAMES and \
        destination_type in ("Regulation", "Standard") or \

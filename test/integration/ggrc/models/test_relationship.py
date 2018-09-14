@@ -114,20 +114,28 @@ class TestRelationship(TestCase):
     with self.assertRaises(ValidationError):
       factories.RelationshipFactory(source=snapshot, destination=snapshottable)
 
-  @ddt.data(*SCOPING_OBJECT_FACTORIES)
-  def test_relationship_scoping_directive(self, factory):
+  SCOPING_MAPPINGS = [(scoping_factory, directive_factory)
+                      for scoping_factory in SCOPING_OBJECT_FACTORIES
+                      for directive_factory in (factories.StandardFactory,
+                                                factories.RegulationFactory)]
+
+  @ddt.data(*SCOPING_MAPPINGS)
+  @ddt.unpack
+  def test_relationship_scoping_directive(self, scoping_factory,
+                                          directive_factory):
     """Validation fails when source-destination types pair disallowed."""
-    scoping_object = factory()
-    directive = factories.DirectiveFactory()
+    with factories.single_commit():
+      scoping_object = scoping_factory()
+      directive = directive_factory()
 
-    with self.assertRaises(ValidationError):
-      factories.RelationshipFactory(source=scoping_object,
-                                    destination=directive)
-    with self.assertRaises(ValidationError):
-      factories.RelationshipFactory(source=directive,
-                                    destination=scoping_object)
+    mappings = [(scoping_object, directive), (directive, scoping_object)]
+    for source, destination in mappings:
+      with self.assertRaises(ValidationError):
+        factories.RelationshipFactory(source=source,
+                                      destination=destination)
 
 
+@ddt.ddt
 class TestExternalRelationship(TestCase):
   """Integration test suite for External Relationship."""
   # pylint: disable=invalid-name
@@ -153,6 +161,8 @@ class TestExternalRelationship(TestCase):
       "X-appengine-inbound-appid": "test_external_app",
   }
   REL_URL = "/api/relationships"
+  SCOPING_OBJECT_FACTORIES = [
+      factories.get_model_factory(name) for name in SCOPING_MODELS_NAMES]
 
   @staticmethod
   def build_relationship_json(source, destination, is_external):
@@ -320,3 +330,36 @@ class TestExternalRelationship(TestCase):
     self.assert200(response)
     relationship = all_models.Relationship.query.get(rel.id)
     self.assertIsNone(relationship)
+
+  SCOPING_MAPPINGS = [(scoping_factory, directive_factory)
+                      for scoping_factory in SCOPING_OBJECT_FACTORIES
+                      for directive_factory in (factories.StandardFactory,
+                                                factories.RegulationFactory)]
+
+  @ddt.data(*SCOPING_MAPPINGS)
+  @ddt.unpack
+  def test_relationship_scoping_directive(self, scoping_factory,
+                                          directive_factory):
+    """Validation fails when source-destination types pair allowed
+       for external users."""
+    self.api.set_user(self.person_ext)
+    with factories.single_commit():
+      scoping_object = scoping_factory()
+      directive = directive_factory()
+
+    mappings = [(scoping_object, directive), (directive, scoping_object)]
+
+    for source, destination in mappings:
+      response = self.api.client.post(
+          self.REL_URL,
+          data=self.build_relationship_json(source, destination, True),
+          headers=self.HEADERS)
+      self.assert200(response)
+
+      rel = all_models.Relationship.query.get(
+          response.json[0][-1]["relationship"]["id"])
+
+      response = self.api.delete(rel)
+      self.assert200(response)
+      relationship = all_models.Relationship.query.get(rel.id)
+      self.assertIsNone(relationship)
