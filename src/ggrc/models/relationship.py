@@ -15,6 +15,7 @@ from ggrc import db
 from ggrc.login import is_external_app_user
 from ggrc.models.mixins import base
 from ggrc.models.mixins import Base
+from ggrc.models.mixins import ScopeObject
 from ggrc.models import reflection
 from ggrc.models.exceptions import ValidationError
 
@@ -199,10 +200,12 @@ class Relationship(base.ContextRBAC, Base, db.Model):
       # check that relationship is external is done in a separate validator
       return
 
-    from ggrc.models.scoping_models import SCOPING_MODELS_NAMES
-    if source_type in SCOPING_MODELS_NAMES and \
+    from ggrc.models import all_models
+    scoping_models_names = [m.__name__ for m in all_models.all_models
+                            if issubclass(m, ScopeObject)]
+    if source_type in scoping_models_names and \
        destination_type in ("Regulation", "Standard") or \
-       destination_type in SCOPING_MODELS_NAMES and \
+       destination_type in scoping_models_names and \
        source_type in ("Regulation", "Standard"):
       raise ValidationError(
           u"You do not have the necessary permissions to map and unmap "

@@ -16,6 +16,7 @@ from ggrc.converters import errors
 from ggrc.converters import get_exportables
 from ggrc.login import get_current_user
 from ggrc.models import all_models
+from ggrc.models.mixins import ScopeObject
 from ggrc.models.reflection import AttributeInfo
 from ggrc.rbac import permissions
 
@@ -500,11 +501,12 @@ class MappingColumnHandler(ColumnHandler):
 
   def _is_allowed_mapping_by_type(self, source_type, destination_type):
     """Checks if a mapping is allowed between given types."""
-    from ggrc.models.scoping_models import SCOPING_MODELS_NAMES
-    if source_type in SCOPING_MODELS_NAMES and \
+    scoping_models_names = [m.__name__ for m in all_models.all_models
+                            if issubclass(m, ScopeObject)]
+    if source_type in scoping_models_names and \
        destination_type in ("Regulation", "Standard") or \
-       source_type in SCOPING_MODELS_NAMES and \
-       destination_type in ("Regulation", "Standard"):
+       destination_type in scoping_models_names and \
+       source_type in ("Regulation", "Standard"):
       self.add_warning(
           errors.MAPPING_SCOPING_ERROR,
           object_type=destination_type,

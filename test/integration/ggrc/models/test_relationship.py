@@ -9,7 +9,7 @@ import ddt
 
 from ggrc.models import all_models
 from ggrc.models.inflector import get_model
-from ggrc.models.scoping_models import SCOPING_MODELS_NAMES
+from ggrc.models.mixins import ScopeObject
 from ggrc.models.exceptions import ValidationError
 
 from integration.ggrc import TestCase
@@ -139,6 +139,9 @@ class TestExternalRelationship(TestCase):
       "X-appengine-inbound-appid": "test_external_app",
   }
   REL_URL = "/api/relationships"
+  SCOPING_MODELS_NAMES = [m.__name__ for m in all_models.all_models
+                          if issubclass(m, ScopeObject) and
+                          not issubclass(m, all_models.SystemOrProcess)]
   SCOPING_OBJECT_FACTORIES = [
       factories.get_model_factory(name) for name in SCOPING_MODELS_NAMES]
 

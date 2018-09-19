@@ -4,11 +4,12 @@
 # pylint: disable=maybe-no-member, invalid-name
 
 """Test import of commentable fields."""
+
 from collections import OrderedDict
 
+from ggrc.models import all_models
 from ggrc.models import inflector
-from ggrc.models.scoping_models import SCOPING_MODELS_NAMES
-from ggrc.models.mixins import Described
+from ggrc.models.mixins import Described, ScopeObject
 from ggrc.models.mixins.audit_relationship import AuditRelationship
 from integration.ggrc import TestCase
 from integration.ggrc.models import factories
@@ -25,6 +26,10 @@ COMMENTABLE_MODELS = [
     "Risk",
     "Threat",
 ]
+
+SCOPING_MODELS_NAMES = [m.__name__ for m in all_models.all_models
+                        if issubclass(m, ScopeObject) and
+                        not issubclass(m, all_models.SystemOrProcess)]
 
 RECIPIENTS = ["Admin", "Primary Contacts", "Secondary Contacts"]
 

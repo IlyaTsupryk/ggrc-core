@@ -813,6 +813,7 @@ __all__ = [
     "Notifiable",
     "Slugged",
     "Stateful",
+    "ScopeObject",
     "TestPlanned",
     "WithStartDate",
     "WithEndDate",

@@ -18,7 +18,7 @@ from ggrc.models import Assessment, all_models
 from ggrc.models import Notification
 from ggrc.models import NotificationType
 from ggrc.models import Revision
-from ggrc.models.scoping_models import SCOPING_MODELS_NAMES
+from ggrc.models.mixins import ScopeObject
 from ggrc.notifications import common
 from integration.ggrc import TestCase
 from integration.ggrc import generator
@@ -155,6 +155,10 @@ class TestCommentNotification(TestCase):
         self.assertEqual(comment["parent_type"], "Assessment")
         expected_suffix = "asmt " + str(parent_obj_key.id)
         self.assertTrue(comment["description"].endswith(expected_suffix))
+
+  SCOPING_MODELS_NAMES = [m.__name__ for m in all_models.all_models
+                          if issubclass(m, ScopeObject) and
+                          not issubclass(m, all_models.SystemOrProcess)]
 
   SCOPING_OBJECT_FACTORIES = [
       factories.get_model_factory(name) for name in SCOPING_MODELS_NAMES]
