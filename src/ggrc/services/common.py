@@ -1392,7 +1392,9 @@ def filter_resource(resource, depth=0, user_permissions=None):  # noqa
   """
 
   if user_permissions is None:
-    user_permissions = permissions.permissions_for(get_current_user())
+    user_permissions = permissions.permissions_for(
+        get_current_user(permission_check=True)
+    )
 
   if isinstance(resource, (list, tuple)):
     filtered = []
@@ -1469,7 +1471,7 @@ def filter_resource(resource, depth=0, user_permissions=None):  # noqa
 
 
 def _is_creator():
-  current_user = get_current_user()
+  current_user = get_current_user(permission_check=True)
   return hasattr(current_user, 'system_wide_role') \
       and current_user.system_wide_role == "Creator"
 

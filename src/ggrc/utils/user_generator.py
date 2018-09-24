@@ -4,7 +4,10 @@
 """Collection of utils for login and user generation.
 """
 
+import json
+
 from email.utils import parseaddr
+from werkzeug import exceptions
 
 from sqlalchemy import orm
 
@@ -13,6 +16,7 @@ from ggrc.integrations import client
 from ggrc.login import get_current_user_id
 from ggrc.models.person import Person
 from ggrc.rbac import SystemWideRoles
+from ggrc.utils import errors
 from ggrc.utils.log_event import log_event
 from ggrc_basic_permissions import basic_roles
 from ggrc_basic_permissions.models import UserRole
@@ -109,12 +113,58 @@ def find_or_create_external_user(email, name):
   return None
 
 
-def find_or_create_ext_app_user():
-  """Find or generate external application user after verification."""
-  name, email = parseaddr(settings.EXTERNAL_APP_USER)
+def find_or_create_ext_app_user(external_user_email=None):
+  """Find or generate external application user after verification
+    and provides it creator role in case the user is external."""
+  name, email = None, external_user_email
+  if not external_user_email:
+    name, email = parseaddr(settings.EXTERNAL_APP_USER)
   user = find_user_by_email(email)
   if not user:
     user = create_user(email, name=name)
+    if external_user_email:
+      add_creator_role(user)
+  return user
+
+
+def parse_user_email(request, header, mandatory):
+  """
+    Get user email from provided header in the request and
+    validate it based on being mandatory or not.
+  :param request: original request
+  :param header: a header with person email
+  :param mandatory: is user a mandatory
+  :return: parsed user email
+  """
+  user = request.headers.get(header)
+  if mandatory and not user:
+    raise exceptions.BadRequest(
+        errors.MANDATORY_HEADER.format(header, user))
+  if not user:
+    return None
+  try:
+    user = json.loads(user)
+    email = str(user["email"])
+  except (TypeError, ValueError, KeyError):
+    raise exceptions.BadRequest(
+        errors.WRONG_PERSON_HEADER_FORMAT.format(header, user))
+  return email
+
+
+def get_external_app_user(request):
+  """
+    Generate or find user by email provided in the X-external-user header.
+    The user will be granted a Global Creator role by design.
+    X-external-user is used to supply actual modifier when working
+    on behalf of EXTERNAL_APP_USER provided in X-ggrc-user header.
+  :param request: original request
+  :return: db user object
+  """
+  external_user_email = parse_user_email(request, "X-external-user",
+                                         mandatory=False)
+  if not external_user_email:
+    return None
+  user = find_or_create_ext_app_user(external_user_email)
   return user
 
 

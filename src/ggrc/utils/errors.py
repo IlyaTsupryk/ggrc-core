@@ -25,3 +25,8 @@ RELOAD_PAGE = u"Try to reload /export page."
 MISSING_FILE = u"The file is missing."
 
 WRONG_FILE_TYPE = u"Invalid file type."
+
+MANDATORY_HEADER = u"{} should be set, contains {!r} instead."
+
+WRONG_PERSON_HEADER_FORMAT = u"{} should have JSON object like" \
+                             u" {{'email': str}}, contains {!r} instead."

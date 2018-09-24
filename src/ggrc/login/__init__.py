@@ -9,6 +9,7 @@ backends
 
 import json
 import re
+from logging import getLogger
 from functools import wraps
 from werkzeug.exceptions import Forbidden
 
@@ -18,6 +19,9 @@ from flask import request
 from flask import redirect
 from ggrc.extensions import get_extension_module_for
 from ggrc.rbac import SystemWideRoles
+
+
+logger = getLogger(__name__)
 
 
 def get_login_module():
@@ -67,12 +71,23 @@ def init_app(app):
   # app.context_processor(login_module.session_context)
 
 
-def get_current_user():
-  """Get user.
-
-  used for a deferred function
-  that might contain usage of get_current_user
+def get_current_user(permission_check=False):
   """
+  Gets current user.
+  :param permission_check: indicates whether we are going to check permissions
+  :return: current user (it could be a logged-in user or a user given in
+    X-external-user header for external users)
+  """
+
+  if not permission_check and is_external_app_user():
+    from ggrc.utils.user_generator import get_external_app_user
+    try:
+      ext_user = get_external_app_user(request)
+      if ext_user:
+        return ext_user
+    except RuntimeError:
+      logger.info("Working outside of request context.")
+
   if hasattr(g, '_current_user'):
     return getattr(g, '_current_user')
 
@@ -81,10 +96,10 @@ def get_current_user():
   return None
 
 
-def get_current_user_id():
+def get_current_user_id(permission_check=False):
   """Get currently logged in user id."""
-  user = get_current_user()
-  if bool(user) and not user.is_anonymous():
+  user = get_current_user(permission_check)
+  if user and not user.is_anonymous():
     return user.id
   return None
 
@@ -103,7 +118,7 @@ def admin_required(func):
   @wraps(func)
   def admin_check(*args, **kwargs):
     """Helper function that performs the admin check"""
-    user = get_current_user()
+    user = get_current_user(permission_check=True)
     role = getattr(user, 'system_wide_role', None)
     if role not in SystemWideRoles.admins:
       raise Forbidden()
@@ -113,7 +128,7 @@ def admin_required(func):
 
 def is_creator():
   """Check if the current user has global role Creator."""
-  current_user = get_current_user()
+  current_user = get_current_user(permission_check=True)
   return (hasattr(current_user, 'system_wide_role') and
           current_user.system_wide_role == SystemWideRoles.CREATOR)
 
@@ -124,7 +139,7 @@ def is_external_app_user():
   Account for external application is defined in settings. External application
   requests require special processing and validations.
   """
-  user = get_current_user()
+  user = get_current_user(permission_check=True)
   if not user or user.is_anonymous():
     return False
 

@@ -48,7 +48,7 @@ def is_allowed_create_for(instance):
 
 def has_system_wide_update():
   """Check if user has system wide update access to all objects."""
-  user = login.get_current_user()
+  user = login.get_current_user(permission_check=True)
   system_wide_role = getattr(user, "system_wide_role",
                              SystemWideRoles.NO_ACCESS)
   return system_wide_role in SystemWideRoles.update_roles
@@ -56,7 +56,7 @@ def has_system_wide_update():
 
 def has_system_wide_read():
   """Check if user has system wide read access to all objects."""
-  user = login.get_current_user()
+  user = login.get_current_user(permission_check=True)
   system_wide_role = getattr(user, "system_wide_role",
                              SystemWideRoles.NO_ACCESS)
   return system_wide_role in SystemWideRoles.read_roles

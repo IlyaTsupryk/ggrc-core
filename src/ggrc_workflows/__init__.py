@@ -723,7 +723,7 @@ def handle_workflow_post(sender, obj=None, src=None, service=None):
     obj.title = source_workflow.title + ' (copy ' + str(obj.id) + ')'
 
   # get the personal context for this logged in user
-  user = get_current_user()
+  user = get_current_user(permission_check=True)
   personal_context = user.get_or_create_object_context(context=1)
   workflow_context = obj.get_or_create_object_context(personal_context)
   obj.context = workflow_context

@@ -5,6 +5,7 @@
 
 import json
 import unittest
+import ddt
 
 import mock
 from werkzeug import exceptions
@@ -13,6 +14,7 @@ from ggrc.login import appengine as login_appengine
 from ggrc.utils import structures
 
 
+@ddt.ddt
 class TestAppengineLogin(unittest.TestCase):
   """Unit test suite for appengine login logic."""
 
@@ -76,31 +78,29 @@ class TestAppengineLogin(unittest.TestCase):
     with self.assertRaises(exceptions.BadRequest):
       login_appengine.request_loader(self.request)
 
-  def test_request_loader_user_invalid_json(self):
+  @ddt.data("X-ggrc-user", "X-external-user")
+  def test_request_loader_user_invalid_json(self, header):
     """HTTP400 if user header contains invalid json."""
-    self.request.headers["X-ggrc-user"] = "not a valid json"
+    self.request.headers[header] = "not a valid json"
 
     with self.assertRaises(exceptions.BadRequest):
       login_appengine.request_loader(self.request)
 
-  def test_request_loader_user_incomplete_json(self):
+  @ddt.data("X-ggrc-user", "X-external-user")
+  def test_request_loader_user_incomplete_json(self, header):
     """HTTP400 if user header contains json with no email."""
-    self.request.headers["X-ggrc-user"] = "{}"
+    self.request.headers[header] = "{}"
 
     with self.assertRaises(exceptions.BadRequest):
       login_appengine.request_loader(self.request)
 
-  def test_request_loader_user_non_dict_json(self):
+  @ddt.data("X-ggrc-user", "X-external-user")
+  def test_request_loader_user_non_dict_json(self, header):
     """HTTP400 if user header contains json with not a dict."""
-    self.request.headers["X-ggrc-user"] = "[]"
-
-    with self.assertRaises(exceptions.BadRequest):
-      login_appengine.request_loader(self.request)
-
-    self.request.headers["X-ggrc-user"] = "12"
-
-    with self.assertRaises(exceptions.BadRequest):
-      login_appengine.request_loader(self.request)
+    for value in ("[]", "12"):
+      self.request.headers[header] = value
+      with self.assertRaises(exceptions.BadRequest):
+        login_appengine.request_loader(self.request)
 
   def test_request_loader_user_not_registered(self):
     """HTTP400 if user header contains json with unknown user."""
