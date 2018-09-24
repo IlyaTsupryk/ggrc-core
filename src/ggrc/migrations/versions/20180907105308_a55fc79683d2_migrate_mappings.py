@@ -17,7 +17,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = 'a55fc79683d2'
-down_revision = '514170fa147b'
+down_revision = '5c83e0840a71'
 
 SCOPING_TABLES = (
     'AccessGroup',
