@@ -71,15 +71,20 @@ def init_app(app):
   # app.context_processor(login_module.session_context)
 
 
-def get_current_user(permission_check=False):
-  """
-  Gets current user.
-  :param permission_check: indicates whether we are going to check permissions
-  :return: current user (it could be a logged-in user or a user given in
-    X-external-user header for external users)
+def get_current_user(use_external_user=True):
+  """Gets current user.
+
+  Retrieves the current logged-in user or the external user given
+  in the X-external-user header based on the provided flag.
+
+  Args:
+      use_external_user: indicates should we use external user or not.
+
+  Returns:
+      current user.
   """
 
-  if not permission_check and is_external_app_user():
+  if use_external_user and is_external_app_user():
     from ggrc.utils.user_generator import get_external_app_user
     try:
       ext_user = get_external_app_user(request)
@@ -96,9 +101,9 @@ def get_current_user(permission_check=False):
   return None
 
 
-def get_current_user_id(permission_check=False):
+def get_current_user_id(use_external_user=True):
   """Get currently logged in user id."""
-  user = get_current_user(permission_check)
+  user = get_current_user(use_external_user)
   if user and not user.is_anonymous():
     return user.id
   return None
@@ -118,7 +123,7 @@ def admin_required(func):
   @wraps(func)
   def admin_check(*args, **kwargs):
     """Helper function that performs the admin check"""
-    user = get_current_user(permission_check=True)
+    user = get_current_user(use_external_user=False)
     role = getattr(user, 'system_wide_role', None)
     if role not in SystemWideRoles.admins:
       raise Forbidden()
@@ -128,7 +133,7 @@ def admin_required(func):
 
 def is_creator():
   """Check if the current user has global role Creator."""
-  current_user = get_current_user(permission_check=True)
+  current_user = get_current_user(use_external_user=False)
   return (hasattr(current_user, 'system_wide_role') and
           current_user.system_wide_role == SystemWideRoles.CREATOR)
 
@@ -139,7 +144,7 @@ def is_external_app_user():
   Account for external application is defined in settings. External application
   requests require special processing and validations.
   """
-  user = get_current_user(permission_check=True)
+  user = get_current_user(use_external_user=False)
   if not user or user.is_anonymous():
     return False
 

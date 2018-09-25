@@ -14,6 +14,8 @@ Assumes app.yaml is configured with:
 E.g., ``login: required`` must be specified *at least* for the '/login' route.
 """
 
+from logging import getLogger
+
 from google.appengine.api import users
 import flask
 import flask_login
@@ -26,6 +28,9 @@ from ggrc.utils.user_generator import find_or_create_ext_app_user
 from ggrc.utils.user_generator import find_or_create_user_by_email
 from ggrc.utils.user_generator import is_external_app_user_email
 from ggrc.utils.user_generator import parse_user_email
+
+
+logger = getLogger(__name__)
 
 
 def get_user():
@@ -77,8 +82,15 @@ def request_loader(request):
   # External Application User should be created if doesn't exist.
   if is_external_app_user_email(email):
     db_user = find_or_create_ext_app_user()
-    from ggrc.utils.user_generator import get_external_app_user
-    get_external_app_user(request)
+    try:
+      # Create in the DB external app user provided in X-external-user header.
+      from ggrc.utils.user_generator import get_external_app_user
+      get_external_app_user(request)
+    except exceptions.BadRequest as exp:
+      logger.error(
+          "Creation of external user has failed. {}".format(exp.message)
+      )
+      raise
   else:
     db_user = all_models.Person.query.filter_by(email=email).first()
   if not db_user:

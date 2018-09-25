@@ -99,7 +99,7 @@ class UserPermissions(DefaultUserPermissions):
 
   def load_permissions(self):
     """Load permissions for the currently logged in user"""
-    user = get_current_user(permission_check=True)
+    user = get_current_user(use_external_user=False)
     email = self.get_email_for(user)
     self._request_permissions = {}
     self._request_permissions['__user'] = email
@@ -475,7 +475,7 @@ def _get_or_create_personal_context(user):
 def handle_program_post(sender, obj=None, src=None, service=None):
   db.session.flush()
   # get the personal context for this logged in user
-  user = get_current_user(permission_check=True)
+  user = get_current_user(use_external_user=False)
   personal_context = _get_or_create_personal_context(user)
   context = obj.build_object_context(
       context=personal_context,

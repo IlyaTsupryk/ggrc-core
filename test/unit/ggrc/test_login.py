@@ -17,7 +17,7 @@ class TestIsExternalAppUser(unittest.TestCase):
     """No logged in user presented."""
     current_user_mock.return_value = None
     self.assertFalse(login.is_external_app_user())
-    current_user_mock.assert_called_once_with(permission_check=True)
+    current_user_mock.assert_called_once_with(use_external_user=False)
 
   @mock.patch('ggrc.login.get_current_user')
   def test_anonymous_user(self, current_user_mock):
@@ -26,7 +26,7 @@ class TestIsExternalAppUser(unittest.TestCase):
     user_mock.is_anonymous.return_value = True
     current_user_mock.return_value = user_mock
     self.assertFalse(login.is_external_app_user())
-    current_user_mock.assert_called_once_with(permission_check=True)
+    current_user_mock.assert_called_once_with(use_external_user=False)
     user_mock.is_anonymous.assert_called_once_with()
 
   @mock.patch('ggrc.utils.user_generator.is_external_app_user_email')
@@ -39,7 +39,7 @@ class TestIsExternalAppUser(unittest.TestCase):
     current_user_mock.return_value = user_mock
     is_external_email_mock.return_value = False
     self.assertFalse(login.is_external_app_user())
-    current_user_mock.assert_called_once_with(permission_check=True)
+    current_user_mock.assert_called_once_with(use_external_user=False)
     user_mock.is_anonymous.assert_called_once_with()
     is_external_email_mock.assert_called_once_with('user@example.com')
 
@@ -53,6 +53,6 @@ class TestIsExternalAppUser(unittest.TestCase):
     current_user_mock.return_value = user_mock
     is_external_email_mock.return_value = True
     self.assertTrue(login.is_external_app_user())
-    current_user_mock.assert_called_once_with(permission_check=True)
+    current_user_mock.assert_called_once_with(use_external_user=False)
     user_mock.is_anonymous.assert_called_once_with()
     is_external_email_mock.assert_called_once_with('user@example.com')

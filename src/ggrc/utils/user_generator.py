@@ -128,13 +128,21 @@ def find_or_create_ext_app_user(external_user_email=None):
 
 
 def parse_user_email(request, header, mandatory):
-  """
-    Get user email from provided header in the request and
-    validate it based on being mandatory or not.
-  :param request: original request
-  :param header: a header with person email
-  :param mandatory: is user a mandatory
-  :return: parsed user email
+  """Gets user email.
+
+  Retrieves user email from provided header in the request and
+  validates it based on being mandatory or not.
+
+  Args:
+      request: the original request.
+      header: a header name with a person email.
+      mandatory: flag that header value is mandatory or not.
+
+  Returns:
+      A parsed user email.
+
+  Raises:
+     BadRequest: Raised when validation on email has failed.
   """
   user = request.headers.get(header)
   if mandatory and not user:
@@ -152,13 +160,17 @@ def parse_user_email(request, header, mandatory):
 
 
 def get_external_app_user(request):
-  """
-    Generate or find user by email provided in the X-external-user header.
-    The user will be granted a Global Creator role by design.
-    X-external-user is used to supply actual modifier when working
-    on behalf of EXTERNAL_APP_USER provided in X-ggrc-user header.
-  :param request: original request
-  :return: db user object
+  """Generates or finds a user by email provided in a X-external-user header.
+
+  The user will be granted a Global Creator role by design.
+  X-external-user is used to supply actual modifier when working
+  on behalf of EXTERNAL_APP_USER user provided in the X-ggrc-user header.
+
+  Args:
+      request: the original request.
+
+  Returns:
+      db user object.
   """
   external_user_email = parse_user_email(request, "X-external-user",
                                          mandatory=False)
