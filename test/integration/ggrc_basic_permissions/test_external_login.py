@@ -85,8 +85,9 @@ class TestExternalPermissions(TestCase):
         email="new_ext_user@example.com"
     ).first()
     person_id = person.id
-    self.assertEqual(response.json[model_singular]['modified_by']['id'],
-                     person_id)
+
+    model_json = response.json[model_singular]
+    self.assertEqual(model_json['modified_by']['id'], person_id)
     self.assertEqual(person.system_wide_role, "Creator")
 
     # check revision modifier
@@ -100,3 +101,55 @@ class TestExternalPermissions(TestCase):
         all_models.Event.resource_type == model.__name__).order_by(
         all_models.Event.id.desc()).first()
     self.assertEqual(event.modified_by_id, person_id)
+
+    # check relationship post
+    destination = factories.SystemFactory()
+    response = self.client.post(
+        "/api/relationships",
+        data=json.dumps([{
+            "relationship": {
+                "source": {"id": model_json['id'], "type": model_json['type']},
+                "destination": {"id": destination.id,
+                                "type": destination.type},
+                "context": {"id": None},
+                "is_external": True
+            }
+        }]),
+        headers=headers)
+    self.assert200(response)
+    relationship = all_models.Relationship.query.get(
+        response.json[0][-1]["relationship"]["id"])
+    self.assertEqual(relationship.source_type, model_json['type'])
+    self.assertEqual(relationship.source_id, model_json['id'])
+    self.assertEqual(relationship.destination_type, "System")
+    self.assertEqual(relationship.destination_id, destination.id)
+    self.assertTrue(relationship.is_external)
+    self.assertEqual(relationship.modified_by_id, person_id)
+    self.assertIsNone(relationship.parent_id)
+    self.assertIsNone(relationship.automapping_id)
+    self.assertIsNone(relationship.context_id)
+
+  def test_post_invalid_modifier(self):
+    """Test that validation is working for X-external-user."""
+    model = all_models.Market
+    headers = {
+        "Content-Type": "application/json",
+        "X-requested-by": "GGRC",
+        "X-appengine-inbound-appid": self.allowed_appid,
+        "X-ggrc-user": json.dumps({"email": "external_app@example.com"}),
+        "X-external-user": "new_ext_user@example.com"
+    }
+    self.client.get("/login", headers=headers)
+
+    model_plural = model._inflector.table_plural
+    model_singular = model._inflector.table_singular
+    response = self.client.post(
+        "api/{}".format(model_plural),
+        data=json.dumps({
+            model_singular: {
+                "title": "{}_invalid_1".format(model_singular),
+                "context": 0
+            }
+        }),
+        headers=headers)
+    self.assertEqual(response.status_code, 400)

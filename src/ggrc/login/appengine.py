@@ -87,9 +87,7 @@ def request_loader(request):
       from ggrc.utils.user_generator import get_external_app_user
       get_external_app_user(request)
     except exceptions.BadRequest as exp:
-      logger.error(
-          "Creation of external user has failed. {}".format(exp.message)
-      )
+      logger.error("Creation of external user has failed : %s", exp.message)
       raise
   else:
     db_user = all_models.Person.query.filter_by(email=email).first()
