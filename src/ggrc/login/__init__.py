@@ -8,8 +8,8 @@ backends
 """
 
 import json
+import logging
 import re
-from logging import getLogger
 from functools import wraps
 from werkzeug.exceptions import Forbidden
 
@@ -21,7 +21,7 @@ from ggrc.extensions import get_extension_module_for
 from ggrc.rbac import SystemWideRoles
 
 
-logger = getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def get_login_module():
@@ -47,13 +47,13 @@ def init_app(app):
   @app.login_manager.unauthorized_handler
   def unauthorized():
     """Called when the user tries to access an endpoint guarded with
-       login_required but they are not authorized.
+    login_required but they are not authorized.
 
-       Endpoints like /dashboard, /program/1, etc. redirect the user to the
-       /login page.
+    Endpoints like /dashboard, /program/1, etc. redirect the user to the
+    /login page.
 
-       Endpoints like /api /query, /import, etc. resolve with 401 UNAUTHORIZED
-       and a simple json error object.
+    Endpoints like /api /query, /import, etc. resolve with 401 UNAUTHORIZED
+    and a simple json error object.
     """
     if (re.match(r'^(\/api|\/query|\/search)', request.path) or
        request.headers.get('X-Requested-By') == 'GGRC'):
@@ -78,31 +78,47 @@ def get_current_user(use_external_user=True):
   in the X-external-user header based on the provided flag.
 
   Args:
-      use_external_user: indicates should we use external user or not.
+    use_external_user: indicates should we use external user or not.
 
   Returns:
-      current user.
+    current user.
   """
 
   if use_external_user and is_external_app_user():
-    from ggrc.utils.user_generator import get_external_app_user
+    from ggrc.utils.user_generator import find_or_create_ext_app_user, \
+        parse_user_email
     try:
-      ext_user = get_external_app_user(request)
+      external_user_email = parse_user_email(request, "X-external-user",
+                                             mandatory=False)
+      ext_user = find_or_create_ext_app_user(external_user_email)
       if ext_user:
         return ext_user
     except RuntimeError:
       logger.info("Working outside of request context.")
+  return _get_current_logged_user()
 
+
+def _get_current_logged_user():
+  """Gets current logged-in user."""
   if hasattr(g, '_current_user'):
     return getattr(g, '_current_user')
-
   if get_login_module():
     return flask_login.current_user
   return None
 
 
 def get_current_user_id(use_external_user=True):
-  """Get currently logged in user id."""
+  """Gets current user id.
+
+  Retrieves the current logged-in user id or the external user id
+  based on the provided flag.
+
+  Args:
+    use_external_user: indicates should we use external user or not.
+
+  Returns:
+    current user id.
+  """
   user = get_current_user(use_external_user)
   if user and not user.is_anonymous():
     return user.id
@@ -117,13 +133,15 @@ def login_required(func):
 
 
 def admin_required(func):
-  """Adming required decorator
+  """Admin rights required decorator.
 
-    Raises Forbidden if the current user is not an admin"""
+  Raises:
+     Forbidden: if the current user is not an admin.
+  """
   @wraps(func)
   def admin_check(*args, **kwargs):
     """Helper function that performs the admin check"""
-    user = get_current_user(use_external_user=False)
+    user = _get_current_logged_user()
     role = getattr(user, 'system_wide_role', None)
     if role not in SystemWideRoles.admins:
       raise Forbidden()
@@ -133,7 +151,7 @@ def admin_required(func):
 
 def is_creator():
   """Check if the current user has global role Creator."""
-  current_user = get_current_user(use_external_user=False)
+  current_user = _get_current_logged_user()
   return (hasattr(current_user, 'system_wide_role') and
           current_user.system_wide_role == SystemWideRoles.CREATOR)
 
@@ -144,7 +162,7 @@ def is_external_app_user():
   Account for external application is defined in settings. External application
   requests require special processing and validations.
   """
-  user = get_current_user(use_external_user=False)
+  user = _get_current_logged_user()
   if not user or user.is_anonymous():
     return False
 

@@ -134,5 +134,4 @@ class TestAppengineLogin(unittest.TestCase):
 
     self.assertIs(result, person)
     self.person_mock.query.filter_by.assert_not_called()
-    self.find_or_create_ext_app_user_mock.assert_called_once_with()
     self.is_ext_user_email_mock.assert_called_once_with(self.EMAIL)

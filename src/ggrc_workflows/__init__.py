@@ -7,8 +7,8 @@
 
 import collections
 import itertools
+import logging
 from datetime import datetime, date
-from logging import getLogger
 from flask import Blueprint
 from sqlalchemy import inspect, orm
 
@@ -32,7 +32,7 @@ from ggrc_workflows.services.common import Signals
 from ggrc_basic_permissions.contributed_roles import RoleContributions
 
 # pylint: disable=invalid-name
-logger = getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 # Initialize Flask Blueprint for extension

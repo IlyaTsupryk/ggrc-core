@@ -11,9 +11,9 @@ import collections
 import hashlib
 import itertools
 import json
+import logging
 import time
 
-from logging import getLogger
 from wsgiref.handlers import format_date_time
 from urllib import urlencode
 
@@ -49,7 +49,7 @@ from ggrc.utils import errors as ggrc_errors
 
 
 # pylint: disable=invalid-name
-logger = getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 CACHE_EXPIRY_COLLECTION = 60

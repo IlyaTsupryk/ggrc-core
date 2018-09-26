@@ -52,10 +52,10 @@ def add_creator_role(user):
 
 
 def create_user(email, **kwargs):
-  """Create User
+  """Creates a user.
 
-  attr:
-      email (string) required
+  Args:
+    email: (string) mandatory user email
   """
   user = Person(email=email, **kwargs)
   db.session.add(user)
@@ -88,8 +88,8 @@ def find_or_create_user_by_email(email, name):
 def search_user(email):
   """Search user by Integration Service
 
-    Returns:
-        string: user name for success, None otherwise
+  Returns:
+    string: user name for success, None otherwise
   """
   service = client.PersonClient()
   if is_authorized_domain(email):
@@ -114,8 +114,14 @@ def find_or_create_external_user(email, name):
 
 
 def find_or_create_ext_app_user(external_user_email=None):
-  """Find or generate external application user after verification
-    and provides it creator role in case the user is external."""
+  """Find or generate external application user.
+
+  Args:
+    external_user_email: the user email.
+
+  Returns:
+    db user object.
+  """
   name, email = None, external_user_email
   if not external_user_email:
     name, email = parseaddr(settings.EXTERNAL_APP_USER)
@@ -128,9 +134,9 @@ def find_or_create_ext_app_user(external_user_email=None):
 
 
 def parse_user_email(request, header, mandatory):
-  """Gets user email.
+  """Parses a user email from the request header.
 
-  Retrieves user email from provided header in the request and
+  Retrieves user email from the request header and
   validates it based on being mandatory or not.
 
   Args:
@@ -157,27 +163,6 @@ def parse_user_email(request, header, mandatory):
     raise exceptions.BadRequest(
         errors.WRONG_PERSON_HEADER_FORMAT.format(header, user))
   return email
-
-
-def get_external_app_user(request):
-  """Generates or finds a user by email provided in a X-external-user header.
-
-  The user will be granted a Global Creator role by design.
-  X-external-user is used to supply actual modifier when working
-  on behalf of EXTERNAL_APP_USER user provided in the X-ggrc-user header.
-
-  Args:
-      request: the original request.
-
-  Returns:
-      db user object.
-  """
-  external_user_email = parse_user_email(request, "X-external-user",
-                                         mandatory=False)
-  if not external_user_email:
-    return None
-  user = find_or_create_ext_app_user(external_user_email)
-  return user
 
 
 def find_user(email):
