@@ -84,9 +84,7 @@ def request_loader(request):
     db_user = find_or_create_ext_app_user()
     try:
       # Create in the DB external app user provided in X-external-user header.
-      external_user_email = parse_user_email(request, "X-external-user",
-                                             mandatory=False)
-      find_or_create_ext_app_user(external_user_email)
+      parse_user_email(request, "X-external-user", mandatory=False)
     except exceptions.BadRequest as exp:
       logger.error("Creation of external user has failed. %s", exp.message)
       raise

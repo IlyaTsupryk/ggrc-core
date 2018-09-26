@@ -84,15 +84,20 @@ def get_current_user(use_external_user=True):
     current user.
   """
 
+  logged_in_user = _get_current_logged_user()
   if use_external_user and is_external_app_user():
-    from ggrc.utils.user_generator import find_or_create_ext_app_user, \
-        parse_user_email
     try:
-      external_user_email = parse_user_email(request, "X-external-user",
+      from ggrc.utils.user_generator import find_or_create_external_user
+      from ggrc.utils.user_generator import parse_user_email
+      external_user_email = parse_user_email(request,
+                                             "X-external-user",
                                              mandatory=False)
-      ext_user = find_or_create_ext_app_user(external_user_email)
-      if ext_user:
-        return ext_user
+      if external_user_email:
+        ext_user = find_or_create_external_user(external_user_email,
+                                                name=None,
+                                                modifier=logged_in_user.id)
+        if ext_user:
+          return ext_user
     except RuntimeError:
       logger.info("Working outside of request context.")
   return _get_current_logged_user()

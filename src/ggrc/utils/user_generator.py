@@ -72,13 +72,16 @@ def is_authorized_domain(email):
   return user_domain.lower() == settings.AUTHORIZED_DOMAIN.lower()
 
 
-def find_or_create_user_by_email(email, name):
+def find_or_create_user_by_email(email, name, modifier=None):
   """Generates or find user for selected email."""
   user = find_user_by_email(email)
   if not user:
-    user = create_user(email,
-                       name=name,
-                       modified_by_id=get_current_user_id())
+    if modifier:
+      user = create_user(email, name=name)
+    else:
+      user = create_user(email,
+                         name=name,
+                         modified_by_id=get_current_user_id())
   if is_authorized_domain(email) and \
      user.system_wide_role == SystemWideRoles.NO_ACCESS:
     add_creator_role(user)
@@ -100,36 +103,25 @@ def search_user(email):
   return None
 
 
-def find_or_create_external_user(email, name):
+def find_or_create_external_user(email, name, modifier=None):
   """Find or generate user after verification"""
   if is_external_app_user_email(email):
     return find_or_create_ext_app_user()
 
   if settings.INTEGRATION_SERVICE_URL == 'mock':
-    return find_or_create_user_by_email(email, name)
+    return find_or_create_user_by_email(email, name, modifier)
 
   if settings.INTEGRATION_SERVICE_URL and search_user(email):
-    return find_or_create_user_by_email(email, name)
+    return find_or_create_user_by_email(email, name, modifier)
   return None
 
 
-def find_or_create_ext_app_user(external_user_email=None):
-  """Find or generate external application user.
-
-  Args:
-    external_user_email: the user email.
-
-  Returns:
-    db user object.
-  """
-  name, email = None, external_user_email
-  if not external_user_email:
-    name, email = parseaddr(settings.EXTERNAL_APP_USER)
+def find_or_create_ext_app_user():
+  """Find or generate external application user."""
+  name, email = parseaddr(settings.EXTERNAL_APP_USER)
   user = find_user_by_email(email)
   if not user:
     user = create_user(email, name=name)
-    if external_user_email:
-      add_creator_role(user)
   return user
 
 

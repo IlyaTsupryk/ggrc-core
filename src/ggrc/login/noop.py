@@ -26,9 +26,7 @@ def get_user():
     name = default_user_name
     permissions = None
   from ggrc.utils.user_generator import find_or_create_user_by_email
-  user = find_or_create_user_by_email(
-      email=email,
-      name=name)
+  user = find_or_create_user_by_email(email=email, name=name)
   permissions = session['permissions'] if 'permissions' in session else None
   setattr(g, '_request_permissions', permissions)
   return user
