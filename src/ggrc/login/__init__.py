@@ -46,7 +46,9 @@ def init_app(app):
   # pylint: disable=unused-variable
   @app.login_manager.unauthorized_handler
   def unauthorized():
-    """Called when the user tries to access an endpoint guarded with
+    """Redirects to the login page and generates an error.
+
+    Called when the user tries to access an endpoint guarded with
     login_required but they are not authorized.
 
     Endpoints like /dashboard, /program/1, etc. redirect the user to the
@@ -100,7 +102,7 @@ def get_current_user(use_external_user=True):
           return ext_user
     except RuntimeError:
       logger.info("Working outside of request context.")
-  return _get_current_logged_user()
+  return logged_in_user
 
 
 def _get_current_logged_user():
