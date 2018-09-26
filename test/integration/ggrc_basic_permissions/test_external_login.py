@@ -56,6 +56,8 @@ class TestExternalPermissions(TestCase):
   ]
 
   @ddt.data(*MODELS)
+  @mock.patch('ggrc.settings.INTEGRATION_SERVICE_URL', new='mock')
+  @mock.patch('ggrc.settings.AUTHORIZED_DOMAIN', new='example.com')
   def test_post_modifier(self, model):
     """Test modifier of models when working as external user."""
     headers = {
@@ -129,6 +131,8 @@ class TestExternalPermissions(TestCase):
     self.assertIsNone(relationship.automapping_id)
     self.assertIsNone(relationship.context_id)
 
+  @mock.patch('ggrc.settings.INTEGRATION_SERVICE_URL', new='endpoint')
+  @mock.patch('ggrc.settings.AUTHORIZED_DOMAIN', new='example.com')
   def test_post_invalid_modifier(self):
     """Test that validation is working for X-external-user."""
     model = all_models.Market
