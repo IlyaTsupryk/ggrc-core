@@ -77,7 +77,7 @@ def find_or_create_user_by_email(email, name, modifier=None):
   user = find_user_by_email(email)
   if not user:
     if modifier:
-      user = create_user(email, name=name)
+      user = create_user(email, name=name, modified_by_id=modifier)
     else:
       user = create_user(email,
                          name=name,

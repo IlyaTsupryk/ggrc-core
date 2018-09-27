@@ -96,7 +96,7 @@ def get_current_user(use_external_user=True):
                                              mandatory=False)
       if external_user_email:
         ext_user = find_or_create_external_user(external_user_email,
-                                                name=None,
+                                                name=external_user_email,
                                                 modifier=logged_in_user.id)
         if ext_user:
           return ext_user
