@@ -12,6 +12,7 @@ from freezegun import freeze_time
 
 from ggrc.converters import errors
 from ggrc.integrations.client import PersonClient
+from ggrc.models import all_models
 from ggrc.models import Assessment
 from ggrc.models import AssessmentTemplate
 from ggrc.models import Audit
@@ -50,6 +51,47 @@ class TestUserGenerator(TestCase):
                   'lastName': name,
                   'username': name})
     return {'persons': res}
+
+  @mock.patch('ggrc.settings.INTEGRATION_SERVICE_URL', new='endpoint')
+  @mock.patch('ggrc.settings.AUTHORIZED_DOMAIN', new='example.com')
+  @freeze_time("2018-05-21 10:28:34")
+  def test_users_generation(self):
+    """Test user generation."""
+    with mock.patch.multiple(PersonClient, _post=self._mock_post):
+      data = json.dumps([
+          {'person': {
+              'name': 'Alan Turing',
+              'email': 'aturing@example.com',
+              'context': None,
+              'external': True
+          }},
+          {'person': {
+              'name': 'Alan Turing 2',
+              'email': 'aturing2@example.com',
+              'context': None,
+              'external': True
+          }},
+          {'person': {
+              'name': 'Alan Turing 3',
+              'email': 'aturing_3@example.com',
+              'context': None,
+              'external': True
+          }}
+      ])
+      response = self._post(data)
+      self.assertStatus(response, 200)
+
+      user = Person.query.filter_by(email='aturing@example.com').one()
+      self.assertEqual(user.name, 'Alan Turing')
+
+      roles = UserRole.query.filter_by(person_id=user.id)
+      self.assertEqual(roles.count(), 1)
+
+    # checks person profile was created successfully
+    self.assert_profiles_restrictions()
+    emails = ['aturing@example.com', ]
+    self.assert_person_profile_created(emails)
+    self.assertEqual(all_models.Event.query.count(), 3)
 
   @mock.patch('ggrc.settings.INTEGRATION_SERVICE_URL', new='endpoint')
   @mock.patch('ggrc.settings.AUTHORIZED_DOMAIN', new='example.com')

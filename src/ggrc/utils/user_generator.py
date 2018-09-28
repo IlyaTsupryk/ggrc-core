@@ -76,12 +76,9 @@ def find_or_create_user_by_email(email, name, modifier=None):
   """Generates or find user for selected email."""
   user = find_user_by_email(email)
   if not user:
-    if modifier:
-      user = create_user(email, name=name, modified_by_id=modifier)
-    else:
-      user = create_user(email,
-                         name=name,
-                         modified_by_id=get_current_user_id())
+    if not modifier:
+      modifier = get_current_user_id()
+    user = create_user(email, name=name, modified_by_id=modifier)
   if is_authorized_domain(email) and \
      user.system_wide_role == SystemWideRoles.NO_ACCESS:
     add_creator_role(user)
@@ -103,16 +100,16 @@ def search_user(email):
   return None
 
 
-def find_or_create_external_user(email, name, modifier=None):
+def find_or_create_external_user(email, name):
   """Find or generate user after verification"""
   if is_external_app_user_email(email):
     return find_or_create_ext_app_user()
 
   if settings.INTEGRATION_SERVICE_URL == 'mock':
-    return find_or_create_user_by_email(email, name, modifier)
+    return find_or_create_user_by_email(email, name)
 
   if settings.INTEGRATION_SERVICE_URL and search_user(email):
-    return find_or_create_user_by_email(email, name, modifier)
+    return find_or_create_user_by_email(email, name)
   return None
 
 
@@ -157,7 +154,7 @@ def parse_user_email(request, header, mandatory):
   return email
 
 
-def find_user(email):
+def find_user(email, modifier=None):
   """Find or generate user.
 
   If Integration Server is specified not found in DB user is generated
@@ -173,7 +170,7 @@ def find_user(email):
     name = search_user(email)
     if not name:
       return None
-    return find_or_create_user_by_email(email, name)
+    return find_or_create_user_by_email(email, name, modifier)
   return find_user_by_email(email)
 
 

@@ -10,6 +10,7 @@ import mock
 
 from ggrc.models import all_models
 
+from ggrc.integrations.client import PersonClient
 from integration.ggrc import TestCase
 from integration.ggrc.models import factories
 
@@ -26,6 +27,23 @@ class TestExternalPermissions(TestCase):
     self.settings_patcher = mock.patch("ggrc.login.appengine.settings")
     self.settings_mock = self.settings_patcher.start()
     self.settings_mock.ALLOWED_QUERYAPI_APP_IDS = [self.allowed_appid]
+
+  @staticmethod
+  def _mock_post(*args, **kwargs):
+    """IntegrationService post mock."""
+    # pylint: disable=unused-argument
+    res = []
+    for name in kwargs["payload"]["usernames"]:
+      res.append({'firstName': name, 'lastName': name, 'username': name})
+    return {'persons': res}
+
+  def _post(self, url, data, headers):
+    return self.client.post(
+        url,
+        content_type='application/json',
+        data=data,
+        headers=headers,
+    )
 
   MODELS = [
       all_models.AccessGroup,
@@ -56,7 +74,7 @@ class TestExternalPermissions(TestCase):
   ]
 
   @ddt.data(*MODELS)
-  @mock.patch('ggrc.settings.INTEGRATION_SERVICE_URL', new='mock')
+  @mock.patch('ggrc.settings.INTEGRATION_SERVICE_URL', new='endpoint')
   @mock.patch('ggrc.settings.AUTHORIZED_DOMAIN', new='example.com')
   def test_post_modifier(self, model):
     """Test modifier of models when working as external user."""
@@ -67,20 +85,21 @@ class TestExternalPermissions(TestCase):
         "X-ggrc-user": json.dumps({"email": "external_app@example.com"}),
         "X-external-user": json.dumps({"email": "new_ext_user@example.com"})
     }
-    self.client.get("/login", headers=headers)
 
     model_plural = model._inflector.table_plural
     model_singular = model._inflector.table_singular
-    response = self.client.post(
-        "api/{}".format(model_plural),
-        data=json.dumps({
-            model_singular: {
-                "title": "{}1".format(model_singular),
-                "context": 0
-            }
-        }),
-        headers=headers)
-    self.assertEqual(response.status_code, 201)
+    with mock.patch.multiple(PersonClient, _post=self._mock_post):
+      self.client.get("/login", headers=headers)
+      response = self._post(
+          "api/{}".format(model_plural),
+          data=json.dumps({
+              model_singular: {
+                  "title": "{}1".format(model_singular),
+                  "context": 0
+              }
+          }),
+          headers=headers)
+      self.assertEqual(response.status_code, 201)
 
     # check object modifier
     person = all_models.Person.query.filter_by(
@@ -106,19 +125,21 @@ class TestExternalPermissions(TestCase):
 
     # check relationship post
     destination = factories.SystemFactory()
-    response = self.client.post(
-        "/api/relationships",
-        data=json.dumps([{
-            "relationship": {
-                "source": {"id": model_json['id'], "type": model_json['type']},
-                "destination": {"id": destination.id,
-                                "type": destination.type},
-                "context": {"id": None},
-                "is_external": True
-            }
-        }]),
-        headers=headers)
-    self.assert200(response)
+    with mock.patch.multiple(PersonClient, _post=self._mock_post):
+      response = self._post(
+          "/api/relationships",
+          data=json.dumps([{
+              "relationship": {
+                  "source": {"id": model_json['id'],
+                             "type": model_json['type']},
+                  "destination": {"id": destination.id,
+                                  "type": destination.type},
+                  "context": {"id": None},
+                  "is_external": True
+              }
+          }]),
+          headers=headers)
+      self.assert200(response)
     relationship = all_models.Relationship.query.get(
         response.json[0][-1]["relationship"]["id"])
     self.assertEqual(relationship.source_type, model_json['type'])
@@ -143,17 +164,19 @@ class TestExternalPermissions(TestCase):
         "X-ggrc-user": json.dumps({"email": "external_app@example.com"}),
         "X-external-user": "new_ext_user@example.com"
     }
-    self.client.get("/login", headers=headers)
 
     model_plural = model._inflector.table_plural
     model_singular = model._inflector.table_singular
-    response = self.client.post(
-        "api/{}".format(model_plural),
-        data=json.dumps({
-            model_singular: {
-                "title": "{}_invalid_1".format(model_singular),
-                "context": 0
-            }
-        }),
-        headers=headers)
-    self.assertEqual(response.status_code, 400)
+
+    with mock.patch.multiple(PersonClient, _post=self._mock_post):
+      self.client.get("/login", headers=headers)
+      response = self._post(
+          "api/{}".format(model_plural),
+          data=json.dumps({
+              model_singular: {
+                  "title": "{}_invalid_1".format(model_singular),
+                  "context": 0
+              }
+          }),
+          headers=headers)
+      self.assertEqual(response.status_code, 400)
