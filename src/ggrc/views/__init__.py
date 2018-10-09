@@ -57,7 +57,7 @@ from ggrc.views import notifications
 from ggrc.views.utils import DocumentEndpoint
 from ggrc.views.registry import object_view
 from ggrc import utils
-from ggrc.utils import benchmark, helpers
+from ggrc.utils import benchmark, helpers, QueryCounter
 from ggrc.utils import revisions
 from ggrc.cache.utils import clear_permission_cache
 
@@ -278,7 +278,7 @@ def do_reindex(with_reindex_snapshots=False):
       all_models.AccessControlRole.id,
       all_models.AccessControlRole.name,
   ))
-  for model_name in sorted(indexed_models.keys()):
+  for model_name in ["Assessment"]:
     logger.info("Updating index for: %s", model_name)
     with benchmark("Create records for %s" % model_name):
       model = indexed_models[model_name]
@@ -287,9 +287,17 @@ def do_reindex(with_reindex_snapshots=False):
       handled_ids = 0
       for ids_chunk in utils.list_chunks(ids, chunk_size=REINDEX_CHUNK_SIZE):
         handled_ids += len(ids_chunk)
+        #if handled_ids < 22600: continue
         logger.info("%s: %s / %s", model.__name__, handled_ids, ids_count)
-        model.bulk_record_update_for(ids_chunk)
-        db.session.commit()
+        with benchmark("Update index data"):
+          # from flask import _app_ctx_stack
+          # from flask.ext.sqlalchemy import get_debug_queries
+          # _app_ctx_stack.top.sqlalchemy_queries = []
+          #with QueryCounter() as counter:
+          model.bulk_record_update_for(ids_chunk)
+          #import ipdb;ipdb.set_trace()
+          #queries = get_debug_queries()
+          db.session.commit()
 
   if with_reindex_snapshots:
     logger.info("Updating index for: %s", "Snapshot")

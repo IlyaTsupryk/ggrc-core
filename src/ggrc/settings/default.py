@@ -145,7 +145,7 @@ LOGGING_LOGGERS = {
     # WARNING - logs warnings and errors only
     # INFO    - logs HTTP-queries
 
-    # "ggrc.utils.benchmarks": "DEBUG"
+    "ggrc.utils.benchmarks": "DEBUG"
     # DEBUG - logs all benchmarks
 }
 

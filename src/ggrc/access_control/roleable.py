@@ -172,15 +172,15 @@ class Roleable(object):
             '_access_control_list'
         ).joinedload(
             "person"
-        ).undefer_group(
-            'Person_complete'
+        ).load_only(
+            "id", "name", "email"
         ),
         orm.subqueryload(
             '_access_control_list'
         ).joinedload(
             "ac_role"
-        ).undefer_group(
-            'AccessControlRole_complete'
+        ).load_only(
+            "id", "name", "object_type", "internal"
         ),
     )
 
