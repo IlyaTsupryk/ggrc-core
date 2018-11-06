@@ -152,8 +152,6 @@ def create_acp(conn, person_id, ac_list_id):
       person_id=person_id,
       ac_list_id=ac_list_id
   )
-  acp_id = utils.last_insert_id(conn)
-  utils.add_to_objects_without_revisions(conn, acp_id, "AccessControlPerson")
 
 
 def create_relationship(conn, comment_id, cgot_id, migrator_id):
