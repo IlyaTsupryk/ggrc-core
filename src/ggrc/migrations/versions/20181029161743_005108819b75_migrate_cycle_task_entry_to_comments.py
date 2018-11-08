@@ -195,8 +195,19 @@ def remove_old_relationship(conn, old_comment_data):
         text("DELETE FROM relationships WHERE id IN :rel_ids"),
         rel_ids=old_rel_ids
     )
-    utils.add_to_objects_without_revisions_bulk(
-        conn, old_rel_ids, "Relationship", "deleted"
+
+
+def remove_old_rel_revisions(conn, old_comment_data):
+  """Remove old relationship revisions."""
+  old_rel_ids = [d.old_rel_id for d in old_comment_data]
+  if old_rel_ids:
+    conn.execute(
+        text("""
+            DELETE FROM revisions
+            WHERE resource_type = :rel_type AND resource_id IN :rel_ids
+        """),
+        rel_type="Relationship",
+        rel_ids=old_rel_ids
     )
 
 
@@ -235,6 +246,7 @@ def run_data_migration():
     )
     create_relationship(conn, comment_id, data.cgot_id, migrator_id)
   remove_old_relationship(conn, old_comment_data)
+  remove_old_rel_revisions(conn, old_comment_data)
   remove_cycle_task_entries(conn, old_comment_data)
 
 
