@@ -162,9 +162,17 @@ def handle_cycle_task_status_change(*objs):
       pusher.get_notification_type("cycle_task_declined"),
       datetime.date.today(), *(declined_tasks)
   )
+  deprecated_status = all_models.CycleTaskGroupObjectTask.DEPRECATED
+  deprecated_tasks = {obj for obj in objs if obj.status == deprecated_status}
+  # Notifications for deprecated tasks should not be sent
+  pusher.get_notification_query(*deprecated_tasks).delete(
+      synchronize_session=False
+  )
 
 
 def handle_cycle_task_group_object_task_put(obj):
+  if obj.status == all_models.CycleTaskGroupObjectTask.DEPRECATED:
+    return
   if obj.has_acl_changes():
     types = ["cycle_task_reassigned", "cycle_created", "manual_cycle_created"]
     if not pusher.notification_exists_for(obj, notification_names=types):
