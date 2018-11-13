@@ -7,7 +7,7 @@ from freezegun import freeze_time
 
 from ggrc import db
 from ggrc.notifications import common
-from ggrc.models import Notification
+from ggrc.models import Notification, all_models
 from integration.ggrc import TestCase
 from integration.ggrc_workflows.generator import WorkflowsGenerator
 from integration.ggrc.api_helper import Api
@@ -90,6 +90,62 @@ class TestOneTimeWorkflowNotification(TestCase):
       self.wf_generator.activate_workflow(wf)
 
       common.get_daily_notifications()
+
+  def test_ct_set_deprecated(self):
+    """Test if CT status is set to Deprecated, notifications are removed."""
+    with freeze_time("2018-11-01"):
+      _, workflow = self.wf_generator.generate_workflow(
+          self.one_time_workflow_1
+      )
+      _, cycle = self.wf_generator.generate_cycle(workflow)
+      self.wf_generator.activate_workflow(workflow)
+    cycle_task = all_models.CycleTaskGroupObjectTask.query.first()
+
+    notif_query = all_models.Notification.query.filter_by(
+        object_type="CycleTaskGroupObjectTask",
+        object_id=cycle_task.id
+    )
+    self.assertEqual(notif_query.count(), 2)
+    response = self.api.put(cycle_task, {"status": "Deprecated"})
+    self.assert200(response)
+    self.assertEqual(notif_query.count(), 0)
+
+  def test_deprecated_ct_acl_update(self):
+    """Test if acl update for deprecated CT will not create notification."""
+    with freeze_time("2018-11-01"):
+      _, workflow = self.wf_generator.generate_workflow(
+          self.one_time_workflow_1
+      )
+      _, cycle = self.wf_generator.generate_cycle(workflow)
+      self.wf_generator.activate_workflow(workflow)
+    cycle_task = all_models.CycleTaskGroupObjectTask.query.first()
+    response = self.api.put(cycle_task, {"status": "Deprecated"})
+    self.assert200(response)
+
+    notif_query = all_models.Notification.query.filter_by(
+        object_type="CycleTaskGroupObjectTask",
+        object_id=cycle_task.id
+    )
+    self.assertEqual(notif_query.count(), 0)
+    task_assignee = all_models.AccessControlRole.query.filter_by(
+        name="Task Assignees",
+        object_type="CycleTaskGroupObjectTask",
+    ).first()
+    person = self.object_generator.generate_person(user_role="Creator")[1]
+    response = self.api.put(
+        cycle_task,
+        {
+            "access_control_list": [{
+                "ac_role_id": task_assignee.id,
+                "person": {
+                    "id": person.id,
+                    "type": "Person",
+                }
+            }]
+        }
+    )
+    self.assert200(response)
+    self.assertEqual(notif_query.count(), 0)
 
   def create_test_cases(self):
     def person_dict(person_id):
