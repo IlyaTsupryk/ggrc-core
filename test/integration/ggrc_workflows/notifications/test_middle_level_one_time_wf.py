@@ -1,6 +1,8 @@
 # Copyright (C) 2018 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
+"""Integration tests for one time workflow notifications."""
+
 import textwrap
 from datetime import date, datetime
 from freezegun import freeze_time
@@ -97,7 +99,7 @@ class TestOneTimeWorkflowNotification(TestCase):
       _, workflow = self.wf_generator.generate_workflow(
           self.one_time_workflow_1
       )
-      _, cycle = self.wf_generator.generate_cycle(workflow)
+      self.wf_generator.generate_cycle(workflow)
       self.wf_generator.activate_workflow(workflow)
     cycle_task = all_models.CycleTaskGroupObjectTask.query.first()
 
@@ -116,7 +118,7 @@ class TestOneTimeWorkflowNotification(TestCase):
       _, workflow = self.wf_generator.generate_workflow(
           self.one_time_workflow_1
       )
-      _, cycle = self.wf_generator.generate_cycle(workflow)
+      self.wf_generator.generate_cycle(workflow)
       self.wf_generator.activate_workflow(workflow)
     cycle_task = all_models.CycleTaskGroupObjectTask.query.first()
     response = self.api.put(cycle_task, {"status": "Deprecated"})

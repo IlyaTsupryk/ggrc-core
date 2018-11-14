@@ -72,11 +72,3 @@ def fill_reviewers_data(link, review, reviewable, reviewers_data):
   for person, _ in review.access_control_list:
     context = EmailReviewContext(reviewable, link, review.email_message)
     reviewers_data[person][review.id] = context
-
-
-def move_notifications_to_history(notifications):
-  """Move sent notifications to history"""
-  for notification in notifications:
-    notif_history = create_notification_history_obj(notification)
-    db.session.add(notif_history)
-    db.session.delete(notification)

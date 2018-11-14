@@ -354,16 +354,26 @@ def process_sent_notifications(notif_list):
   db.session.commit()
 
 
-def create_notification_history_obj(notif):
+def create_notification_history_obj(notif, is_sent=True):
   """Create notification history object.
 
   Args:
     notif: Notification object.
+    is_sent: True - notification was already sent, False - it wasn't
   """
   notif_history_context = {c.key: getattr(notif, c.key)
                            for c in inspect(notif).mapper.column_attrs}
-  notif_history_context["sent_at"] = datetime.utcnow()
+  if is_sent:
+    notif_history_context["sent_at"] = datetime.utcnow()
   return NotificationHistory(**notif_history_context)
+
+
+def move_notifications_to_history(notifications, is_sent=True):
+  """Move notifications into history"""
+  for notification in notifications:
+    notif_history = create_notification_history_obj(notification, is_sent)
+    db.session.add(notif_history)
+    db.session.delete(notification)
 
 
 def show_pending_notifications():

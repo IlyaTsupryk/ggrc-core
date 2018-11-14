@@ -16,7 +16,7 @@ from ggrc.notifications.proposal_helpers import get_email_proposal_list
 from ggrc.notifications.proposal_helpers import mark_proposals_sent
 from ggrc.notifications.review_helpers import build_review_data
 from ggrc.notifications.review_helpers import get_review_notifications
-from ggrc.notifications.review_helpers import move_notifications_to_history
+from ggrc.notifications import common
 
 DIGEST_TITLE = "Proposal Digest"
 DIGEST_TMPL = settings.JINJA2.get_template("notifications/fast_digest.html")
@@ -59,7 +59,7 @@ def send_notification():
         html=html,
     )
   mark_proposals_sent(proposals)
-  move_notifications_to_history(review_notifications)
+  common.move_notifications_to_history(review_notifications)
   db.session.commit()
 
 

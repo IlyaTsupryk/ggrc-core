@@ -22,14 +22,15 @@ from sqlalchemy import inspect
 from ggrc.models.notification import Notification
 from ggrc.models import all_models
 from ggrc import db
+from ggrc.notifications import common
 
 from ggrc_workflows.notification import pusher
 
 
 def get_notif_name_by_wf(workflow):
-    if not workflow.unit:
-      return "cycle_task_due_in"
-    return "{}_cycle_task_due_in".format(workflow.unit)
+  if not workflow.unit:
+    return "cycle_task_due_in"
+  return "{}_cycle_task_due_in".format(workflow.unit)
 
 
 def handle_workflow_modify(sender, obj=None, src=None, service=None):
@@ -162,15 +163,23 @@ def handle_cycle_task_status_change(*objs):
       pusher.get_notification_type("cycle_task_declined"),
       datetime.date.today(), *(declined_tasks)
   )
+
   deprecated_status = all_models.CycleTaskGroupObjectTask.DEPRECATED
   deprecated_tasks = {obj for obj in objs if obj.status == deprecated_status}
   # Notifications for deprecated tasks should not be sent
-  pusher.get_notification_query(*deprecated_tasks).delete(
-      synchronize_session=False
-  )
+  notifications = pusher.get_notification_query(*deprecated_tasks).all()
+  common.move_notifications_to_history(notifications, is_sent=False)
+
+  assigned_status = all_models.CycleTaskGroupObjectTask.ASSIGNED
+  assigned_tasks = {obj for obj in objs if obj.status == assigned_status}
+  for task in assigned_tasks:
+    old_status = inspect(task).attrs.status.history.deleted[0]
+    if old_status == deprecated_status and not task.is_done:
+      # Restore notification here
 
 
 def handle_cycle_task_group_object_task_put(obj):
+  """Handle PUT request processing for cycle task."""
   if obj.status == all_models.CycleTaskGroupObjectTask.DEPRECATED:
     return
   if obj.has_acl_changes():
