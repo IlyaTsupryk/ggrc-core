@@ -42,3 +42,12 @@ def without_sqlalchemy_cache(func):
         del _app_ctx_stack.top.sqlalchemy_queries
     return res
   return wrapper
+
+
+def assert_type(obj, expected_type):
+  """Check if provided object has proper type."""
+  if not isinstance(obj, expected_type):
+    raise ValueError(
+        "Object of incorrect type '{}' provided. "
+        "Should be '{}'".format(type(obj), expected_type)
+    )
