@@ -231,3 +231,6 @@ RETRY_OPTIONS = {
     "task_retry_limit": 10,
 }
 DEFAULT_QUEUE = "ggrc"
+
+APPENGINE_INSTANCE = os.environ.get('APPENGINE_INSTANCE')
+APPENGINE_LOCATION = os.environ.get('APPENGINE_LOCATION', 'us-central1')
