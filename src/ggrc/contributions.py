@@ -9,7 +9,7 @@ from ggrc.notifications import common
 from ggrc.notifications import fast_digest
 from ggrc.notifications import notification_handlers
 from ggrc.notifications import data_handlers
-
+from ggrc.notifications import import_export as import_export_notifications
 
 NIGHTLY_CRON_JOBS = [
     common.generate_cycle_tasks_notifs,
@@ -28,6 +28,10 @@ HALF_HOUR_CRON_JOBS = [
 
 NOTIFICATION_LISTENERS = [
     notification_handlers.register_handlers
+]
+
+IMPORT_EXPORT_JOBS = [
+    import_export_notifications.check_import_export_jobs,
 ]
 
 

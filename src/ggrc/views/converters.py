@@ -15,31 +15,30 @@ from StringIO import StringIO
 from datetime import datetime
 
 from apiclient.errors import HttpError
-from google.appengine.ext import deferred
 
+import flask
 from flask import current_app
 from flask import request
 from flask import json
 from flask import render_template
-from flask import g
 from werkzeug.exceptions import (
     BadRequest, InternalServerError, Unauthorized, Forbidden, NotFound
 )
 
-from ggrc import db
+from ggrc import db, utils
 from ggrc.app import app
 from ggrc.converters import get_exportables
 from ggrc.converters.base import ImportConverter, ExportConverter
 from ggrc.converters.import_helper import count_objects, \
     read_csv_file, get_export_filename, get_object_column_definitions
 from ggrc.gdrive import file_actions as fa
-from ggrc.models import import_export, person
+from ggrc.models import import_export, background_task
 from ggrc.notifications import job_emails
 from ggrc.query.exceptions import BadQueryException
 from ggrc.query.builder import QueryHelper
 from ggrc.login import login_required, get_current_user
 from ggrc import settings
-from ggrc.utils import benchmark, get_url_root, errors as app_errors
+from ggrc.utils import benchmark, errors as app_errors
 
 
 EXPORTABLES_MAP = {exportable.__name__: exportable for exportable
@@ -231,103 +230,122 @@ def make_import(csv_data, dry_run, ie_job=None):
 
 def check_for_previous_run():
   """Check whether previous run is failed"""
-  import webapp2  # pylint: disable=import-error
-  if int(webapp2.get_request().headers["X-Appengine-Taskexecutioncount"]):
+  if int(request.headers["X-Appengine-Taskexecutioncount"]):
     raise InternalServerError(app_errors.PREVIOUS_RUN_FAILED)
 
 
-def run_export(objects, ie_id, user_id, url_root, exportable_objects):
+@app.route("/_background_tasks/run_export", methods=["POST"])
+@background_task.queued_task
+def run_export(task):
   """Run export"""
-  with app.app_context():
-    try:
-      user = person.Person.query.get(user_id)
-      setattr(g, '_current_user', user)
-      ie = import_export.get(ie_id)
-      check_for_previous_run()
+  user = get_current_user()
+  ie_id = task.parameters.get("ie_id")
+  objects = task.parameters.get("objects")
+  exportable_objects = task.parameters.get("exportable_objects")
+  export_error = ""
 
-      content, _ = make_export(objects, exportable_objects)
-      db.session.refresh(ie)
-      if ie.status == "Stopped":
-        return
-      ie.status = "Finished"
+  try:
+    ie = import_export.get(ie_id)
+    check_for_previous_run()
+
+    content, _ = make_export(objects, exportable_objects)
+    db.session.refresh(ie)
+    if ie.status == "Stopped":
+      return
+    ie.status = "Finished"
+    ie.end_at = datetime.utcnow()
+    ie.content = content
+    db.session.commit()
+
+    user = get_current_user()
+    job_emails.send_email(job_emails.EXPORT_COMPLETED, user.email,
+                          ie.title, ie_id)
+  except Exception as e:  # pylint: disable=broad-except
+    logger.exception("Export failed: %s", e.message)
+    ie = import_export.get(ie_id)
+    try:
+      ie.status = "Failed"
       ie.end_at = datetime.utcnow()
-      ie.content = content
       db.session.commit()
-      job_emails.send_email(job_emails.EXPORT_COMPLETED, user.email, url_root,
-                            ie.title, ie_id)
+      job_emails.send_email(job_emails.EXPORT_FAILED, user.email)
+      export_error = e.message
     except Exception as e:  # pylint: disable=broad-except
-      logger.exception("Export failed: %s", e.message)
-      try:
-        ie.status = "Failed"
-        ie.end_at = datetime.utcnow()
-        db.session.commit()
-        job_emails.send_email(job_emails.EXPORT_FAILED, user.email, url_root)
-      except Exception as e:  # pylint: disable=broad-except
-        logger.exception("%s: %s", app_errors.STATUS_SET_FAILED, e.message)
+      logger.exception("%s: %s", app_errors.STATUS_SET_FAILED, e.message)
+      export_error = e.message
+
+  return utils.make_simple_response(export_error)
 
 
-def run_import_phases(ie_id, user_id, url_root):  # noqa: ignore=C901
+@app.route("/_background_tasks/run_import_phases", methods=["POST"])  # noqa: ignore=C901
+@background_task.queued_task
+def run_import_phases(task):
   """Execute import phases"""
-  with app.app_context():
-    try:
-      user = person.Person.query.get(user_id)
-      setattr(g, '_current_user', user)
-      ie_job = import_export.get(ie_id)
-      check_for_previous_run()
+  ie_id = task.parameters.get("ie_id")
+  user = get_current_user()
+  import_error = ""
 
-      csv_data = read_csv_file(StringIO(ie_job.content.encode("utf-8")))
+  try:
+    ie_job = import_export.get(ie_id)
+    check_for_previous_run()
 
-      if ie_job.status == "Analysis":
-        info = make_import(csv_data, True, ie_job)
-        db.session.rollback()
-        db.session.refresh(ie_job)
-        if ie_job.status == "Stopped":
+    csv_data = read_csv_file(StringIO(ie_job.content.encode("utf-8")))
+
+    if ie_job.status == "Analysis":
+      info = make_import(csv_data, True, ie_job)
+      db.session.rollback()
+      db.session.refresh(ie_job)
+      if ie_job.status == "Stopped":
+        return
+      ie_job.results = json.dumps(info)
+      for block_info in info:
+        if block_info["block_errors"] or block_info["row_errors"]:
+          ie_job.status = "Analysis Failed"
+          ie_job.end_at = datetime.utcnow()
+          db.session.commit()
+          job_emails.send_email(job_emails.IMPORT_FAILED, user.email,
+                                ie_job.title)
           return
-        ie_job.results = json.dumps(info)
-        for block_info in info:
-          if block_info["block_errors"] or block_info["row_errors"]:
-            ie_job.status = "Analysis Failed"
-            ie_job.end_at = datetime.utcnow()
-            db.session.commit()
-            job_emails.send_email(job_emails.IMPORT_FAILED, user.email,
-                                  url_root, ie_job.title)
-            return
-        for block_info in info:
-          if block_info["block_warnings"] or block_info["row_warnings"]:
-            ie_job.status = "Blocked"
-            db.session.commit()
-            job_emails.send_email(job_emails.IMPORT_BLOCKED, user.email,
-                                  url_root, ie_job.title)
-            return
-        ie_job.status = "In Progress"
-        db.session.commit()
+      for block_info in info:
+        if block_info["block_warnings"] or block_info["row_warnings"]:
+          ie_job.status = "Blocked"
+          db.session.commit()
+          job_emails.send_email(job_emails.IMPORT_BLOCKED, user.email,
+                                ie_job.title)
+          return
+      ie_job.status = "In Progress"
+      db.session.commit()
 
-      if ie_job.status == "In Progress":
-        info = make_import(csv_data, False, ie_job)
-        ie_job.results = json.dumps(info)
-        for block_info in info:
-          if block_info["block_errors"] or block_info["row_errors"]:
-            ie_job.status = "Analysis Failed"
-            ie_job.end_at = datetime.utcnow()
-            job_emails.send_email(job_emails.IMPORT_FAILED, user.email,
-                                  url_root, ie_job.title)
-            db.session.commit()
-            return
-        ie_job.status = "Finished"
-        ie_job.end_at = datetime.utcnow()
-        db.session.commit()
-        job_emails.send_email(job_emails.IMPORT_COMPLETED, user.email,
-                              url_root, ie_job.title)
+    if ie_job.status == "In Progress":
+      info = make_import(csv_data, False, ie_job)
+      ie_job.results = json.dumps(info)
+      for block_info in info:
+        if block_info["block_errors"] or block_info["row_errors"]:
+          ie_job.status = "Analysis Failed"
+          ie_job.end_at = datetime.utcnow()
+          job_emails.send_email(job_emails.IMPORT_FAILED, user.email,
+                                ie_job.title)
+          db.session.commit()
+          return
+      ie_job.status = "Finished"
+      ie_job.end_at = datetime.utcnow()
+      db.session.commit()
+      job_emails.send_email(job_emails.IMPORT_COMPLETED, user.email,
+                            ie_job.title)
+  except Exception as e:  # pylint: disable=broad-except
+    logger.exception(e.message)
+    ie_job = import_export.get(ie_id)
+    try:
+      ie_job.status = "Failed"
+      ie_job.end_at = datetime.utcnow()
+      db.session.commit()
+      job_emails.send_email(job_emails.IMPORT_FAILED, user.email,
+                            ie_job.title)
+      import_error = e.message
     except Exception as e:  # pylint: disable=broad-except
-      logger.exception(e.message)
-      try:
-        ie_job.status = "Failed"
-        ie_job.end_at = datetime.utcnow()
-        db.session.commit()
-        job_emails.send_email(job_emails.IMPORT_FAILED, user.email,
-                              url_root, ie_job.title)
-      except Exception as e:  # pylint: disable=broad-except
-        logger.exception("%s: %s", app_errors.STATUS_SET_FAILED, e.message)
+      logger.exception("%s: %s", app_errors.STATUS_SET_FAILED, e.message)
+      import_error = e.message
+
+  return utils.make_simple_response(import_error)
 
 
 def init_converter_views():
@@ -395,15 +413,31 @@ def handle_start(ie_job, user_id):
   try:
     ie_job.start_at = datetime.utcnow()
     db.session.commit()
-    deferred.defer(run_import_phases,
-                   ie_job.id,
-                   user_id,
-                   get_url_root(),
-                   _queue="ggrcImport")
+    run_background_import(ie_job.id)
     return make_import_export_response(ie_job.log_json())
   except Exception as e:
     logger.exception(e.message)
     raise BadRequest(app_errors.JOB_FAILED.format(job_type="Import"))
+
+
+def run_background_import(ie_job_id):
+  bg_task = background_task.create_task(
+      name="import",
+      url=flask.url_for(run_import_phases.__name__),
+      parameters={
+          "ie_id": ie_job_id,
+          "parent": {
+              "type": "ImportExport",
+              "id": ie_job_id,
+          }
+      },
+      queue="ggrcImport",
+      queued_callback=run_import_phases,
+      operation_type="import",
+  )
+
+  bg_task.start()
+  db.session.commit()
 
 
 def handle_import_put(**kwargs):
@@ -546,18 +580,33 @@ def handle_export_post(**kwargs):
         title=filename,
         start_at=datetime.utcnow(),
     )
-    deferred.defer(run_export,
-                   objects,
-                   ie.id,
-                   user.id,
-                   get_url_root(),
-                   exportable_objects,
-                   _queue="ggrcImport")
+    run_background_export(ie.id, objects, exportable_objects)
     return make_import_export_response(ie.log_json())
   except Exception as e:
     logger.exception(e.message)
     raise BadRequest(
         app_errors.INCORRECT_REQUEST_DATA.format(job_type="Export"))
+
+
+def run_background_export(ie_job_id, objects, exportable_objects):
+  bg_task = background_task.create_task(
+      name="export",
+      url=flask.url_for(run_export.__name__),
+      parameters={
+          "ie_id": ie_job_id,
+          "objects": objects,
+          "exportable_objects": exportable_objects,
+          "parent": {
+              "type": "ImportExport",
+              "id": ie_job_id,
+          }
+      },
+      queue="ggrcImport",
+      queued_callback=run_export,
+      operation_type="export",
+  )
+  bg_task.start()
+  db.session.commit()
 
 
 def handle_delete(**kwargs):

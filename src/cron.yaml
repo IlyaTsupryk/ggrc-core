@@ -14,3 +14,6 @@ cron:
 - description: GGRC - half hour jobs
   url: /half_hour_cron_endpoint
   schedule: every 30 mins
+- description: GGRC - import health jobs
+  url: /import_health_cron_endpoint
+  schedule: every 10 mins

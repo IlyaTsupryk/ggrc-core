@@ -376,3 +376,14 @@ def get_task_attr(attr_name, params=None):
   elif json_data and attr_name in json_data:
     attr = json_data.get(attr_name)
   return attr
+
+
+def make_simple_response(error):
+  from ggrc.app import app
+  if error:
+    return app.make_response((
+        "Failed with error: {}".format(error),
+        500,
+        [("Content-Type", "text/html")]
+    ))
+  return app.make_response(("Success", 200, [("Content-Type", "text/html")]))

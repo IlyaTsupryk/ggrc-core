@@ -59,6 +59,11 @@ def half_hour_cron_endpoint():
   return job_runner("HALF_HOUR_CRON_JOBS")
 
 
+def import_health_cron_endpoint():
+  """Endpoint running ten minute jobs from all modules."""
+  return job_runner("IMPORT_EXPORT_JOBS")
+
+
 def init_cron_views(app):
   """Init all cron jobs' endpoints"""
   app.add_url_rule(
@@ -74,4 +79,9 @@ def init_cron_views(app):
   app.add_url_rule(
       "/half_hour_cron_endpoint", "half_hour_cron_endpoint",
       view_func=half_hour_cron_endpoint
+  )
+
+  app.add_url_rule(
+      "/import_health_cron_endpoint", "import_health_cron_endpoint",
+      view_func=import_health_cron_endpoint
   )

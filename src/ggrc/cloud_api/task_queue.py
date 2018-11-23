@@ -28,7 +28,7 @@ def get_app_engine_tasks(queue_name):
         location,
         queue_name
     )
-    tasks = request_taskqueue_data(parent)["tasks"]
+    tasks = request_taskqueue_data(parent).get("tasks", [])
     helpers.assert_type(tasks, list)
     logger.info("%s tasks were found in queue", len(tasks))
     return get_task_names_from_dict(tasks)
