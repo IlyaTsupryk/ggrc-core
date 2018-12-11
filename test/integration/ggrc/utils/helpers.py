@@ -3,7 +3,11 @@
 
 """Module with common helper functions."""
 
+from contextlib import contextmanager
+
 import ddt
+
+import flask
 
 
 def tuplify(data):
@@ -32,3 +36,12 @@ def unwrap(data):
   def wrapper(func):
     return ddt.data(*tuplify(data))(ddt.unpack(func))
   return wrapper
+
+
+@contextmanager
+def logged_user(user):
+  """Context manager to log in provided user."""
+  global_user = getattr(flask.g, "_current_user", None)
+  setattr(flask.g, "_current_user", user)
+  yield
+  setattr(flask.g, "_current_user", global_user)

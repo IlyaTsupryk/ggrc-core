@@ -20,10 +20,13 @@ import mock
 
 from ggrc import db
 from ggrc.models import all_models
+from ggrc.views import converters
+from ggrc.models import exceptions
 
 from integration.ggrc import api_helper
 from integration.ggrc.models import factories
 from integration.ggrc.services import TestCase
+from integration.ggrc.utils import helpers
 
 
 class TestImportExportBase(TestCase):
@@ -337,6 +340,31 @@ class TestImportExports(TestImportExportBase):
         headers=self.headers)
     self.assert200(response)
     self.assertEqual(json.loads(response.data)["status"], "Stopped")
+
+  def test_stop_export(self):
+    """Test if exception raised when ImportExport has Stopped status."""
+    with factories.single_commit():
+      user = all_models.Person.query.first()
+      ie_job = factories.ImportExportFactory(
+          job_type="Export",
+          status="Stopped",
+          created_at=datetime.now(),
+          created_by=user,
+          title="test.csv",
+          content="test content"
+      )
+      factories.ControlFactory()
+
+    with self.assertRaises(exceptions.StoppedException):
+      with helpers.logged_user(user):
+        converters.make_export(
+            [{
+                "filters": {"expression": {}},
+                "object_name": "Control"
+            }],
+            exportable_objects=[0],
+            ie_job=ie_job,
+        )
 
   @ddt.data(("Not Started", True),
             ("Blocked", True),
