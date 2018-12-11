@@ -31,6 +31,7 @@ class ImportExport(Identifiable, db.Model):
   FAILED_STATUS = 'Failed'
   IN_PROGRESS_STATUS = 'In Progress'
   NOT_STARTED_STATUS = 'Not Started'
+  STOPPED_STATUS = 'Stopped'
 
   IMPORT_EXPORT_STATUSES = [
       NOT_STARTED_STATUS,
@@ -38,7 +39,7 @@ class ImportExport(Identifiable, db.Model):
       IN_PROGRESS_STATUS,
       BLOCKED_STATUS,
       'Analysis Failed',
-      'Stopped',
+      STOPPED_STATUS,
       FAILED_STATUS,
       'Finished',
   ]

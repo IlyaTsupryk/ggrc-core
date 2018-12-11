@@ -33,6 +33,7 @@ from ggrc.converters.import_helper import count_objects, \
     read_csv_file, get_export_filename, get_object_column_definitions
 from ggrc.gdrive import file_actions as fa
 from ggrc.models import import_export, background_task
+from ggrc.models.exceptions import StoppedException
 from ggrc.notifications import job_emails
 from ggrc.query.exceptions import BadQueryException
 from ggrc.query.builder import QueryHelper
@@ -160,13 +161,14 @@ def handle_export_csv_template_request():
   return export_file(export_to, filename, csv_string)
 
 
-def make_export(objects, exportable_objects=None):
+def make_export(objects, exportable_objects=None, ie_job=None):
   """Make export"""
   query_helper = QueryHelper(objects)
   ids_by_type = query_helper.get_ids()
   converter = ExportConverter(
       ids_by_type=ids_by_type,
-      exportable_queries=exportable_objects
+      exportable_queries=exportable_objects,
+      ie_job=ie_job,
   )
   csv_data = converter.export_csv_data()
   object_names = "_".join(converter.get_object_names())
@@ -258,6 +260,9 @@ def run_export(task):
 
     job_emails.send_email(job_emails.EXPORT_COMPLETED, user.email,
                           ie.title, ie_id)
+
+  except StoppedException:
+    logger.info("Export was stopped")
   except Exception as e:  # pylint: disable=broad-except
     logger.exception("Export failed: %s", e.message)
     ie = import_export.get(ie_id)

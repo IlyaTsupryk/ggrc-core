@@ -66,3 +66,7 @@ class StatusValidationError(ValidationError):
 
 class ReservedNameError(ValueError):
   pass
+
+
+class StoppedException(RuntimeError):
+  pass
