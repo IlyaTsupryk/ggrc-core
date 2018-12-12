@@ -365,7 +365,9 @@ def create_notification_history_obj(notif):
     notif: Notification object.
   """
   notif_history_context = {c.key: getattr(notif, c.key)
-                           for c in inspect(notif).mapper.column_attrs}
+                           for c in inspect(notif).mapper.column_attrs
+                           if c.key != "id"}
+  notif_history_context["notification_id"] = notif.id
   notif_history_context["sent_at"] = datetime.utcnow()
   return NotificationHistory(**notif_history_context)
 
