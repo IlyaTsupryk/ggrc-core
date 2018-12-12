@@ -89,3 +89,4 @@ class Notification(BaseNotification):
 
 class NotificationHistory(BaseNotification):
   __tablename__ = 'notifications_history'
+  notification_id = db.Column(db.Integer, nullable=False)
