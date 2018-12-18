@@ -21,6 +21,7 @@ import ggrc.models
 import ggrc.services
 from ggrc import db
 from ggrc.login import get_current_user_id
+from ggrc.models.mixins.synchronizable import Synchronizable
 from ggrc.models.reflection import AttributeInfo
 from ggrc.models.types import JsonType
 from ggrc.models.utils import PolymorphicRelationship
@@ -745,10 +746,22 @@ class Builder(AttributeInfo):
     """Update the state represented by ``obj`` to be equivalent to the state
     represented by the JSON dictionary ``json_obj``.
     """
-    self.do_update_attrs(obj, json_obj, self._update_attrs)
+    attrs = set(self._update_attrs)
+
+    if isinstance(obj, Synchronizable):
+      sync_attrs = obj.get_sync_attrs()
+      attrs.update(sync_attrs)
+
+    self.do_update_attrs(obj, json_obj, list(attrs))
 
   def create(self, obj, json_obj):
     """Update the state of the new model object ``obj`` to be equivalent to the
     state represented by the JSON dictionary ``json_obj``.
     """
-    self.do_update_attrs(obj, json_obj, self._create_attrs)
+    attrs = set(self._create_attrs)
+
+    if isinstance(obj, Synchronizable):
+      sync_attrs = obj.get_sync_attrs()
+      attrs.update(sync_attrs)
+
+    self.do_update_attrs(obj, json_obj, list(attrs))
