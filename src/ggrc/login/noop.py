@@ -60,3 +60,8 @@ def logout():
     del session['permissions']
   flask_login.logout_user()
   return redirect(get_next_url(request, default_url=url_for('index')))
+
+
+def request_loader(request_):
+  """Get the user provided in X-GGRC-user if whitelisted Appid provided."""
+  return common.get_ggrc_user(request_, False)

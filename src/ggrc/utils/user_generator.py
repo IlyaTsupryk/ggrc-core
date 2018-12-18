@@ -87,7 +87,9 @@ def find_or_create_user_by_email(email, name, modifier=None):
   """Generates or find user for selected email."""
   user = find_user_by_email(email)
   if not user:
-    if not modifier:
+    _, app_email = parseaddr(settings.EXTERNAL_APP_USER)
+
+    if not modifier and email != app_email:
       modifier = get_current_user_id()
     user = create_user(email, name=name, modified_by_id=modifier)
   if is_authorized_domain(email) and \
