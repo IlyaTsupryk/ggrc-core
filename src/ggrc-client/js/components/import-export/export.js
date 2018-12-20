@@ -13,6 +13,7 @@ import {
   getExportsHistory,
   downloadExportContent,
   deleteExportJob,
+  stopExportJob,
   jobStatuses,
   PRIMARY_TIMEOUT,
   SECONDARY_TIMEOUT,
@@ -147,6 +148,23 @@ export default can.Component.extend({
       }
       this.attr(`disabledItems.${id}`, true);
       this.deleteJob(id);
+    },
+    onStopExport({id}) {
+      stopExportJob(id)
+        .then(() => {
+          _.find(this.attr('currentExports'), (job) => {
+            if (job.id === id) {
+              job.attr('status', 'Stopped');
+            }
+          });
+        })
+        .fail((jqxhr, textStatus, errorThrown) => {
+          if (isConnectionLost()) {
+            connectionLostNotifier();
+          } else {
+            handleAjaxError(jqxhr, errorThrown);
+          }
+        });
     },
     deleteJob(id) {
       deleteExportJob(id)

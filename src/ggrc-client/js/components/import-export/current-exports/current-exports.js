@@ -19,6 +19,12 @@ export default can.Component.extend({
         id,
       });
     },
+    stop(id) {
+      this.dispatch({
+        type: 'stopExport',
+        id,
+      });
+    },
     downloadCSV(id, fileName) {
       this.dispatch({
         type: 'viewContent',
@@ -37,8 +43,9 @@ export default can.Component.extend({
   },
   helpers: {
     canRemove(status, options) {
-      let canRemove = [jobStatuses.FINISHED, jobStatuses.FAILED]
-        .includes(status());
+      let canRemove = [
+        jobStatuses.FINISHED, jobStatuses.STOPPED, jobStatuses.FAILED,
+      ].includes(status());
 
       return canRemove ?
         options.fn(options.contexts) :

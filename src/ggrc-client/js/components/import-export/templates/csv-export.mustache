@@ -6,6 +6,7 @@
   <current-exports {exports}="currentExports"
                    {disabled}="disabledItems"
                    {in-progress}="isInProgress"
+                   (stop-export)="onStopExport(%event)"
                    (remove-item)="onRemove(%event)"
                    (view-content)="onViewContent(%event)"
   ></current-exports>

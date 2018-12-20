@@ -30,6 +30,12 @@
           {{#case 'In Progress'}}
             Export in Progress:
             <spinner {toggle}="true"></spinner>
+            <button type="button" class="btn btn-red btn-small btn-stop" ($click)="stop(id)">
+              Cancel Export
+            </button>
+          {{/case}}
+          {{#case 'Stopped'}}
+            Export Stopped
           {{/case}}
           {{#case 'Finished'}}
             <button type="button" class="btn btn-small btn-white" ($click)="downloadCSV(id, title)">
