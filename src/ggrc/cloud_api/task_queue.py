@@ -51,3 +51,23 @@ def get_task_names_from_dict(tasks):
     task_name = task_path.split("/")[-1]
     task_names.append(task_name)
   return task_names
+
+
+def delete_task(name):
+  """Delete cloud task from queue."""
+  service = discovery.build(API_SERVICE_NAME, API_VERSION)
+  request = service.projects().locations().queues().tasks().delete(name=name)
+  return request.execute()
+
+
+def stop_bg_tasks(task_names, queue_name):
+  """Stop background tasks."""
+  for task_name in task_names:
+    with benchmark("Stop task '{}'".format(task_name)):
+      name = "projects/{}/locations/{}/queues/{}/tasks/{}".format(
+          settings.APPENGINE_INSTANCE,
+          settings.APPENGINE_LOCATION,
+          queue_name,
+          task_name
+      )
+      delete_task(name)
