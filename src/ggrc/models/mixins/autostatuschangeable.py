@@ -292,6 +292,7 @@ class AutoStatusChangeable(object):
         src: The original PUT JSON dictionary.
         service: The instance of Resource handling the PUT request.
       """
+      import pdb;pdb.set_trace()
       # pylint: disable=unused-argument,unused-variable,protected-access
       endpoints = [obj.source.type, obj.destination.type]
       if model.__name__ not in endpoints:

@@ -461,7 +461,7 @@ def send_email(user_email, subject, body):
   message.to = user_email
   message.html = body
 
-  message.send()
+  #message.send()
 
 
 def modify_data(data):

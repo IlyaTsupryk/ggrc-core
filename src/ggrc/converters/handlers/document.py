@@ -10,6 +10,7 @@ from ggrc.converters import errors
 from ggrc.converters.handlers import handlers
 from ggrc.login import get_current_user_id
 from ggrc.converters.handlers.file_handler import FileHandler
+from ggrc.services import signals
 
 logger = getLogger(__name__)
 
@@ -104,8 +105,11 @@ class DocumentReferenceUrlHandler(handlers.ColumnHandler):
     parent = self.row_converter.obj
     for new_link, new_doc in new_link_map.iteritems():
       if new_link not in old_link_map:
-        all_models.Relationship(source=parent,
-                                destination=new_doc)
+        obj = all_models.Relationship(
+            source=parent,
+            destination=new_doc
+        )
+        signals.Restful.model_posted.send(obj.__class__, obj=obj, src={}, )
       else:
         db.session.expunge(new_doc)
 

@@ -589,6 +589,13 @@ class MappingColumnHandler(ColumnHandler):
           signals.Import.mapping_created.send(current_obj.__class__,
                                               instance=current_obj,
                                               counterparty=obj)
+          import pdb;pdb.set_trace()
+          signals.Restful.model_posted.send(
+              current_obj.__class__,
+              obj=current_obj,
+              src={},
+          )
+
           relationships.append(mapping)
           db.session.add(mapping)
         else:

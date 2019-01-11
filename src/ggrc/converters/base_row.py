@@ -328,6 +328,8 @@ class ImportRowConverter(RowConverter):
     """
     if self.block_converter.converter.dry_run or self.ignore:
       return
+
+    self.send_pre_commit_signals()
     try:
       self._mark_obj_dirty()
       modified_objects = get_modified_objects(db.session)
