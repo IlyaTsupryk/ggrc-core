@@ -608,7 +608,8 @@ class Resource(ModelView):
       self._check_put_permissions(obj, new_context)
     with benchmark("Deserialize object"):
       self.json_update(obj, src)
-    obj.modified_by_id = get_current_user_id()
+
+    obj.modified_by = get_current_user()
 
     if not isinstance(obj, Synchronizable):
       obj.updated_at = datetime.datetime.utcnow()

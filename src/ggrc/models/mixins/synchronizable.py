@@ -10,21 +10,13 @@ from sqlalchemy.orm import validates
 from ggrc import db
 
 
-class Synchronizable(object):
-  """Mixin that identification of models that will be used by SyncService."""
-
-  # We are overriding "update_at" attribute by removing "onupdate" handler.
+class ChangesSynchronized(object):  # pylint: disable=too-few-public-methods
+  """Mixin override "updated_at" attribute by removing "onupdate" handler."""
   updated_at = db.Column(
       db.DateTime,
       nullable=False,
       default=lambda: datetime.utcnow().replace(microsecond=0).isoformat()
   )
-
-  _sync_attrs = {
-      'id',
-      'created_at',
-      'updated_at'
-  }
 
   @validates('updated_at')
   def validate_updated_at(self, _, value):  # pylint: disable=no-self-use
@@ -34,6 +26,20 @@ class Synchronizable(object):
 
     return value
 
+
+class AttributesSynchronized(object):  # pylint: disable=too-few-public-methods
+  """Mixin that extand "_api_attrs" with additional attributes."""
+  _sync_attrs = {
+      'id',
+      'created_at',
+      'updated_at'
+  }
+
   def get_sync_attrs(self):
     """Extend "_api_attrs" with additional attributes."""
     return self._sync_attrs
+
+
+class Synchronizable(ChangesSynchronized,
+                     AttributesSynchronized):
+  """Mixin that identifies models that will be used by SyncService."""

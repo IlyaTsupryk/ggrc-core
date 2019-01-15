@@ -8,6 +8,7 @@ from ggrc import db
 from ggrc.models.mixins import base
 from ggrc.models.mixins import Base
 from ggrc.models.mixins.filterable import Filterable
+from ggrc.models.mixins.synchronizable import ChangesSynchronized
 from ggrc.models import reflection
 from ggrc.access_control import role
 from ggrc.models.types import LongJsonType
@@ -16,7 +17,8 @@ from ggrc.utils import referenced_objects
 from ggrc.utils.revisions_diff import meta_info
 
 
-class Revision(Filterable, base.ContextRBAC, Base, db.Model):
+class Revision(ChangesSynchronized, Filterable, base.ContextRBAC, Base,
+               db.Model):
   """Revision object holds a JSON snapshot of the object at a time."""
 
   __tablename__ = 'revisions'
