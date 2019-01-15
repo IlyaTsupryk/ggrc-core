@@ -11,14 +11,22 @@ from flask import request
 from ggrc.models.cache import Cache
 from ggrc.models.event import Event
 from ggrc.models.revision import Revision
+from ggrc.models.mixins.synchronizable import Synchronizable
 from ggrc.login import get_current_user_id
 
 logger = getLogger(__name__)
 
 
 def _revision_generator(user_id, action, objects):
+  """Geberate and return revisions for objects."""
   for obj in objects:
-    yield Revision(obj, user_id, action, obj.log_json())
+    revision = Revision(obj, user_id, action, obj.log_json())
+
+    if isinstance(obj, Synchronizable):
+      revision.created_at = obj.updated_at
+      revision.updated_at = obj.updated_at
+
+    yield revision
 
 
 def _get_log_revisions(current_user_id, obj=None, force_obj=False):
