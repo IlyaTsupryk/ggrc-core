@@ -3,6 +3,7 @@
 
 """Tests for control model."""
 from datetime import datetime
+import json
 
 import mock
 
@@ -174,7 +175,7 @@ class TestSyncServiceControl(TestCase):
         "control": control_body
     })
 
-    self.assertEqual(response.status_code, 201)
+    self.assertEqual(201, response.status_code)
 
     id_ = response.json.get("control").get("id")
     self.assertEqual(control_body["id"], id_)
@@ -185,8 +186,8 @@ class TestSyncServiceControl(TestCase):
     ext_user = db.session.query(all_models.Person).filter(
         all_models.Person.email == self.ext_user_email).one()
 
-    self.assertEqual(ext_user.modified_by_id, app_user.id)
-    self.assertEqual(control.modified_by_id, ext_user.id)
+    self.assertEqual(app_user.id, ext_user.modified_by_id)
+    self.assertEqual(ext_user.id, control.modified_by_id)
 
     self.assertEqual(control.title, control_body["title"])
     self.assertEqual(control.slug, control_body["slug"])
@@ -197,7 +198,18 @@ class TestSyncServiceControl(TestCase):
         category["id"] for category in control_body["categories"]
     }
     mapped_categories = {category.id for category in control.categories}
-    self.assertEqual(mapped_categories, expected_categories)
+    self.assertEqual(expected_categories, mapped_categories)
+
+    revision = db.session.query(all_models.Revision).filter(
+        all_models.Revision.resource_type == "Control",
+        all_models.Revision.resource_id == control.id,
+        all_models.Revision.action == "created",
+        all_models.Revision.created_at == control.updated_at,
+        all_models.Revision.updated_at == control.updated_at,
+        all_models.Revision.modified_by_id == control.modified_by_id,
+    ).one()
+
+    self.assertIsNotNone(revision)
 
   @staticmethod
   def prepare_control_request_body():
@@ -241,11 +253,22 @@ class TestSyncServiceControl(TestCase):
     control_body["created_at"] = "2018-01-04"
     control_body["updated_at"] = "2018-01-05"
 
-    response = self.api.send_request(self.api.client.put,
-                                     control,
-                                     response.json,
-                                     api_link=api_link)
+    self.api.client.put(api_link,
+                        data=json.dumps(response.json),
+                        headers=self.api.headers)
 
-    self.assertEqual("updated_title", response.json["control"]["title"])
-    self.assertEqual("2018-01-04", response.json["control"]["created_at"])
-    self.assertEqual("2018-01-05", response.json["control"]["updated_at"])
+    control = db.session.query(all_models.Control).get(control.id)
+    self.assertEqual("updated_title", control.title)
+    self.assertEqual("2018-01-04", control.created_at.strftime("%Y-%m-%d"))
+    self.assertEqual("2018-01-05", control.updated_at.strftime("%Y-%m-%d"))
+
+    revision = db.session.query(all_models.Revision).filter(
+        all_models.Revision.resource_type == "Control",
+        all_models.Revision.resource_id == control.id,
+        all_models.Revision.action == "modified",
+        all_models.Revision.created_at == control.updated_at,
+        all_models.Revision.updated_at == control.updated_at,
+        all_models.Revision.modified_by_id == control.modified_by_id,
+    ).one()
+
+    self.assertIsNotNone(revision)
