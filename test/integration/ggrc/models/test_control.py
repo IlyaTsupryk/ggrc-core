@@ -226,3 +226,26 @@ class TestSyncServiceControl(TestCase):
             }
         ]
     }
+
+  @mock.patch("ggrc.settings.INTEGRATION_SERVICE_URL", "mock")
+  def test_control_update(self):
+    """Test control update using sync service."""
+    control = factories.ControlFactory()
+
+    response = self.api.get(control, control.id)
+
+    api_link = response.json["control"]["selfLink"]
+
+    control_body = response.json["control"]
+    control_body["title"] = "updated_title"
+    control_body["created_at"] = "2018-01-04"
+    control_body["updated_at"] = "2018-01-05"
+
+    response = self.api.send_request(self.api.client.put,
+                                     control,
+                                     response.json,
+                                     api_link=api_link)
+
+    self.assertEqual("updated_title", response.json["control"]["title"])
+    self.assertEqual("2018-01-04", response.json["control"]["created_at"])
+    self.assertEqual("2018-01-05", response.json["control"]["updated_at"])
