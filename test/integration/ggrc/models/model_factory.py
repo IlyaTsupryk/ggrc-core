@@ -70,8 +70,8 @@ class ModelFactory(factory.Factory, object):
     user = models.Person.query.first()
     if not user:
       user = models.Person(
-          name=noop.default_user_name,
-          email=noop.default_user_email,
+          name=noop.DEFAULT_USER_NAME,
+          email=noop.DEFAULT_USER_EMAIL,
       )
       db.session.add(user)
       db.session.flush()
