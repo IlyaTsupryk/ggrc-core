@@ -12,21 +12,21 @@ from flask import url_for, redirect, request, session, g, flash
 
 from ggrc.login import common
 
-default_user_name = 'Example User'
-default_user_email = 'user@example.com'
+DEFAULT_USER_NAME = 'Example User'
+DEFAULT_USER_EMAIL = 'user@example.com'
 
 
 def get_user():
   """Gets current user from the request headers."""
   if 'X-ggrc-user' in request.headers:
     json_user = json.loads(request.headers['X-ggrc-user'])
-    email = json_user.get('email', default_user_email)
-    name = json_user.get('name', default_user_name)
+    email = json_user.get('email', DEFAULT_USER_EMAIL)
+    name = json_user.get('name', DEFAULT_USER_NAME)
     permissions = json_user.get('permissions', None)
     session['permissions'] = permissions
   else:
-    email = default_user_email
-    name = default_user_name
+    email = DEFAULT_USER_EMAIL
+    name = DEFAULT_USER_NAME
     permissions = None
   from ggrc.utils.user_generator import find_or_create_user_by_email
   user = find_or_create_user_by_email(email=email, name=name)
@@ -35,7 +35,7 @@ def get_user():
   return user
 
 
-def before_request(*args, **kwargs):
+def before_request(*args, **kwargs):  # pylint:disable=unused-argument
   permissions = session['permissions'] if 'permissions' in session else None
   setattr(g, '_request_permissions', permissions)
 
@@ -48,13 +48,13 @@ def login():
   if db_user.system_wide_role != 'No Access':
     flask_login.login_user(db_user)
     return redirect(get_next_url(request, default_url=url_for('dashboard')))
-  else:
-    flash(u'You do not have access. Please contact your administrator.',
-          'alert alert-info')
-    return redirect('/')
+  flash(u'You do not have access. Please contact your administrator.',
+        'alert alert-info')
+  return redirect('/')
 
 
 def logout():
+  """Logs out current user."""
   from ggrc.login.common import get_next_url
   if 'permissions' in session:
     del session['permissions']
