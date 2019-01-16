@@ -39,7 +39,6 @@ from ggrc.fulltext import get_indexer
 from ggrc.login import get_current_user_id, get_current_user
 from ggrc.models.cache import Cache
 from ggrc.models.exceptions import ValidationError, translate_message
-from ggrc.models.mixins.synchronizable import Synchronizable
 from ggrc.rbac import permissions
 from ggrc.services.attribute_query import AttributeQueryBuilder
 from ggrc.services import signals
@@ -530,9 +529,6 @@ class Resource(ModelView):
 
   def validate_headers_for_put_or_delete(self, obj):
     """rfc 6585 defines a new status code for missing required headers"""
-    if issubclass(self.model, Synchronizable):
-      return None
-
     required_headers = set(["If-Match", "If-Unmodified-Since"])
     missing_headers = required_headers.difference(
         set(self.request.headers.keys()))
@@ -609,12 +605,8 @@ class Resource(ModelView):
     with benchmark("Deserialize object"):
       self.json_update(obj, src)
 
-    obj.modified_by = get_current_user()
+    self.add_modified_object_to_session(obj)
 
-    if not isinstance(obj, Synchronizable):
-      obj.updated_at = datetime.datetime.utcnow()
-
-    db.session.add(obj)
     with benchmark("Process actions"):
       self.process_actions(obj)
     with benchmark("Validate custom attributes"):
@@ -671,6 +663,13 @@ class Resource(ModelView):
       return self.json_success_response(
           object_for_json, self.modified_at(obj),
           obj_etag=etag(self.modified_at(obj), get_info(obj)))
+
+  def add_modified_object_to_session(self, obj):
+    """Update modification metadata and add object to session."""
+    obj.modified_by_id = get_current_user_id()
+    obj.updated_at = datetime.datetime.utcnow()
+
+    db.session.add(obj)
 
   @classmethod
   def _mark_delete_object_permissions(cls, obj):
