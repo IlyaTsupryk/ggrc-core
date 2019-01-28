@@ -22,6 +22,8 @@ class TestAccessControlList(TestCase):
 
   def setUp(self):
     super(TestAccessControlList, self).setUp()
+    self.api = Api()
+
     self.person = factories.PersonFactory(name="My Person")
     self.acr = factories.AccessControlRoleFactory(
         object_type="Control", read=True
@@ -67,8 +69,9 @@ class TestAccessControlList(TestCase):
             }]
         },
     }
-    response = self.api.post(
-        all_models.Control, [control] if collection else control)
+    with self.api.as_external():
+      response = self.api.post(
+          all_models.Control, [control] if collection else control)
 
     self.assertTrue(
         response.status_code == 200 or response.status_code == 201,
@@ -129,7 +132,8 @@ class TestAccessControlList(TestCase):
     control = response.json['control']
     control['access_control_list'].append(
         acl_helper.get_acl_json(second_acr_id, person_id))
-    response = self.api.put(self.control, {"control": control})
+    with self.api.as_external():
+      response = self.api.put(self.control, {"control": control})
     self.assert200(
         response, "PUTing control failed {}".format(response.status)
     )
@@ -148,7 +152,8 @@ class TestAccessControlList(TestCase):
 
     control = response.json['control']
     control['access_control_list'] = []
-    response = self.api.put(self.control, {"control": control})
+    with self.api.as_external():
+      response = self.api.put(self.control, {"control": control})
     self.assert200(
         response, "PUTing control failed {}".format(response.status)
     )
@@ -210,10 +215,11 @@ class TestAccessControlList(TestCase):
     # new revision should be created for ACL
     control = response["control"]
     control["access_control_list"] = []
-    self.api.put(
-        all_models.Control.query.get(control["id"]),
-        {"control": control}
-    )
+    with self.api.as_external():
+      self.api.put(
+          all_models.Control.query.get(control["id"]),
+          {"control": control}
+      )
     self.assertEqual(
         all_models.Revision.query.filter_by(
             resource_type="AccessControlPerson"

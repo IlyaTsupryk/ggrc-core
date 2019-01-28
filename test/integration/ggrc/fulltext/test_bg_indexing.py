@@ -48,15 +48,16 @@ class TestTaskqueueIndexing(TestCase):
   @mock.patch.object(settings, "APP_ENGINE", True, create=True)
   def test_general_bg_indexing(self):
     """Test indexing in background task"""
-    response, _ = self.object_generator.generate_object(
-        all_models.Control,
-        data={
-            "control": {
-                "title": "testCONTROL_title",
-                "context": None,
-            },
-        }
-    )
+    with self.object_generator.api.as_external():
+      response, _ = self.object_generator.generate_object(
+          all_models.Control,
+          data={
+              "control": {
+                  "title": "testCONTROL_title",
+                  "context": None,
+              },
+          }
+      )
     self.assertStatus(response, 201)
     control_id = response.json["control"]["id"]
     modified_by = response.json["control"]["modified_by"]["id"]
@@ -100,15 +101,16 @@ class TestTaskqueueIndexing(TestCase):
   @mock.patch.object(settings, "APP_ENGINE", True, create=True)
   def test_indexing_header(self):
     """Test response headers contain indexing task.id"""
-    response, _ = self.object_generator.generate_object(
-        all_models.Control,
-        data={
-            "control": {
-                "title": "CONTROL_title",
-                "context": None,
-            },
-        }
-    )
+    with self.object_generator.api.as_external():
+      response, _ = self.object_generator.generate_object(
+          all_models.Control,
+          data={
+              "control": {
+                  "title": "CONTROL_title",
+                  "context": None,
+              },
+          }
+      )
 
     self.assertStatus(response, 201)
     indexing_task_id = response.headers.get("X-GGRC-Indexing-Task-Id")

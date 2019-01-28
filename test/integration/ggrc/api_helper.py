@@ -12,6 +12,8 @@ This api helper also helps with delete and put requests where it fetches the
 latest etag needed for such requests.
 """
 import logging
+from contextlib import contextmanager
+from email import utils as email_utils
 from urllib import urlencode
 
 import flask
@@ -19,6 +21,7 @@ import flask
 from ggrc import db
 from ggrc import builder
 from ggrc import utils
+from ggrc import settings
 from ggrc.app import app
 from ggrc.services.common import Resource
 
@@ -78,6 +81,30 @@ class Api(object):
     self.client.get("/login", headers=self.user_headers)
     db.session.commit()
     db.session.flush()
+
+  def login_as_external(self):
+    """Login API client as external app user."""
+    _, user_email = email_utils.parseaddr(settings.EXTERNAL_APP_USER)
+    self.user_headers = {
+        "X-GGRC-user": "{\"email\": \"%s\"}" % user_email
+    }
+
+    self.client.get("/logout")
+    self.client.get("/login", headers=self.user_headers)
+
+  def login_as_normal(self):
+    """Login API client as internal user."""
+    if "X-GGRC-user" in self.user_headers:
+      del self.user_headers["X-GGRC-user"]
+
+    self.client.get("/logout")
+    self.client.get("/login")
+
+  @contextmanager
+  def as_external(self):
+    self.login_as_external()
+    yield
+    self.login_as_normal()
 
   @staticmethod
   def api_link(obj, obj_id=None):

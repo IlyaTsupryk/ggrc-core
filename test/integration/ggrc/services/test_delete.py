@@ -24,17 +24,17 @@ class TestDelete(TestCase, WithQueryApi):
 
   def test_delete(self):
     """Deletion is synchronous and triggers compute_attributes."""
-    control = factories.ControlFactory()
+    project = factories.ProjectFactory()
 
     with mock.patch(
         "ggrc.models.background_task.create_task",
     ) as create_task:
-      result = self.api.delete(control)
-      controls = db.session.query(all_models.Control).all()
+      result = self.api.delete(project)
+      projects = db.session.query(all_models.Project).all()
       event_id = db.session.query(func.max(all_models.Event.id)).first()[0]
 
       self.assert200(result)
-      self.assertEqual(len(controls), 0)
+      self.assertEqual(len(projects), 0)
       self.assertEqual(db.session.query(all_models.BackgroundTask).count(), 0)
       create_task.assert_called_once_with(
           name="compute_attributes",

@@ -96,9 +96,10 @@ class TestSnapshoting(SnapshotterBaseTestCase):
 
     control = self.refresh_object(control)
 
-    self.api.modify_object(control, {
-        "title": "Test Control Snapshot 1 EDIT 1"
-    })
+    with self.api.as_external():
+      self.api.put(control, {
+          "title": "Test Control Snapshot 1 EDIT 1"
+      })
 
     self.create_object(models.Audit, {
         "title": "Snapshotable audit",
@@ -160,9 +161,10 @@ class TestSnapshoting(SnapshotterBaseTestCase):
 
     control = self.refresh_object(control)
 
-    self.api.modify_object(control, {
-        "title": "Test Control Snapshot 1 EDIT 1"
-    })
+    with self.api.as_external():
+      self.api.put(control, {
+          "title": "Test Control Snapshot 1 EDIT 1"
+      })
 
     self.create_audit(program)
 
@@ -190,9 +192,10 @@ class TestSnapshoting(SnapshotterBaseTestCase):
     self.create_mapping(objective, control)
 
     control = self.refresh_object(control)
-    self.api.modify_object(control, {
-        "title": "Test Control Snapshot 1 Edit 2 AFTER initial snapshot"
-    })
+    with self.api.as_external():
+      self.api.put(control, {
+          "title": "Test Control Snapshot 1 Edit 2 AFTER initial snapshot"
+      })
 
     audit = self.refresh_object(audit)
     # Initiate update operation
@@ -271,9 +274,10 @@ class TestSnapshoting(SnapshotterBaseTestCase):
 
     control = self.refresh_object(control)
     for x in xrange(1, 4):
-      self.api.modify_object(control, {
-          "title": "Test Control Snapshot 1 EDIT {}".format(x)
-      })
+      with self.api.as_external():
+        self.api.put(control, {
+            "title": "Test Control Snapshot 1 EDIT {}".format(x)
+        })
 
     self.create_object(models.Audit, {
         "title": "Snapshotable audit",
@@ -358,15 +362,18 @@ class TestSnapshoting(SnapshotterBaseTestCase):
     ).one()
     val2 = models.CustomAttributeValue(attribute_value="CA value 1",
                                        custom_attribute=cad2)
-    self.api.modify_object(control, {
-        "custom_attribute_values": [{
-            "attributable_id": control.id,
-            "attributable_type": "Assessment",
-            "id": val2.id,
-            "custom_attribute_id": cad2.id,
-            "attribute_value": "CA value 1 EDIT 1",
-        }]
-    })
+
+    with self.api.as_external():
+      self.api.put(control, {
+          "custom_attribute_values": [{
+              "attributable_id": control.id,
+              "attributable_type": "Assessment",
+              "id": val2.id,
+              "custom_attribute_id": cad2.id,
+              "attribute_value": "CA value 1 EDIT 1",
+          }]
+      })
+
     control_snapshot = db.session.query(models.Snapshot).filter(
         models.Snapshot.child_type == "Control",
         models.Snapshot.child_id == control.id
@@ -435,9 +442,10 @@ class TestSnapshoting(SnapshotterBaseTestCase):
         2)
 
     control = self.refresh_object(control)
-    self.api.modify_object(control, {
-        "title": "Test Control Snapshot 1 EDIT 1"
-    })
+    with self.api.as_external():
+      self.api.put(control, {
+          "title": "Test Control Snapshot 1 EDIT 1"
+      })
 
     data_asset = self.refresh_object(data_asset)
     self.api.modify_object(data_asset, {
@@ -500,9 +508,11 @@ class TestSnapshoting(SnapshotterBaseTestCase):
     self.create_audit(program)
 
     control = self.refresh_object(control)
-    self.api.modify_object(control, {
-        "title": "Test Control Snapshot 1 EDIT 1"
-    })
+
+    with self.api.as_external():
+      self.api.put(control, {
+          "title": "Test Control Snapshot 1 EDIT 1"
+      })
 
     control_snapshot = db.session.query(models.Snapshot).filter(
         models.Snapshot.child_type == "Control",

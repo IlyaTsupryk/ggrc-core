@@ -77,7 +77,7 @@ class TestNotEmptyRevisions(test_ggrc.TestCase, query_helper.WithQueryApi):
   def test_not_empty_revisions(self):
     """Test `not_empty_revisions` returns revisions with changes."""
     self._turn_on_bg_indexing()
-    instance = factories.ControlFactory()
+    instance = factories.ProgramFactory()
 
     def edit_without_changes(instance):
       """Helper function to perform instance edit without actual changes."""

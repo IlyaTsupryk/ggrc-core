@@ -7,7 +7,7 @@ import json
 
 import mock
 
-from ggrc import db, settings
+from ggrc import db
 from ggrc.models import all_models
 from integration.ggrc import TestCase
 from integration.ggrc.models import factories
@@ -32,50 +32,6 @@ class TestControl(TestCase):
     # be really really sure
     control = db.session.query(all_models.Control).get(control.id)
     self.assertIn(category, control.categories)
-
-  def test_create_without_assertions(self):
-    """Check control creation without assertions fail"""
-    response = self.api.post(all_models.Control, {
-        "control": {
-            "title": "Control title",
-            "context": None,
-            "recipients": "Admin,Control Operators,Control Owners",
-            "send_by_default": 0,
-            "assertions": []
-        }
-    })
-
-    self.assert400(response)
-    control = all_models.Control.query.first()
-    self.assertIsNone(control)
-
-  def test_create_with_assertions(self):
-    """Check control creation with assertions pass"""
-    with factories.single_commit():
-      assertion = factories.ControlAssertionFactory()
-
-    response = self.api.post(all_models.Control, {
-        "control": {
-            "title": "Control title",
-            "context": None,
-            "recipients": "Admin,Control Operators,Control Owners",
-            "send_by_default": 0,
-            "assertions": [{
-                "id": assertion.id
-            }]
-        }
-    })
-
-    self.assertEqual(response.status_code, 201)
-    control = all_models.Control.query.first()
-    self.assertIsNotNone(control)
-    self.assertEqual(assertion.id, control.assertions[0].id)
-
-  def test_has_test_plan(self):
-    """Check test plan setup to control."""
-    control = factories.ControlFactory(test_plan="This is a test text")
-    control = db.session.query(all_models.Control).get(control.id)
-    self.assertEqual(control.test_plan, "This is a test text")
 
   def test_create_control(self):
     """Test control update with internal user."""
@@ -131,8 +87,6 @@ class TestSyncServiceControl(TestCase):
 
     self.app_user_email = "external_app@example.com"
     self.ext_user_email = 'external@example.com'
-
-    settings.EXTERNAL_APP_USER = self.app_user_email
 
     custom_headers = {
         'X-GGRC-user': '{"email": "%s"}' % self.app_user_email,
@@ -248,3 +202,47 @@ class TestSyncServiceControl(TestCase):
     ).one()
 
     self.assertIsNotNone(revision)
+
+  def test_create_without_assertions(self):
+    """Check control creation without assertions fail"""
+    response = self.api.post(all_models.Control, {
+        "control": {
+            "title": "Control title",
+            "context": None,
+            "recipients": "Admin,Control Operators,Control Owners",
+            "send_by_default": 0,
+            "assertions": []
+        }
+    })
+
+    self.assert400(response)
+    control = all_models.Control.query.first()
+    self.assertIsNone(control)
+
+  def test_create_with_assertions(self):
+    """Check control creation with assertions pass"""
+    with factories.single_commit():
+      assertion = factories.ControlAssertionFactory()
+
+    response = self.api.post(all_models.Control, {
+        "control": {
+            "title": "Control title",
+            "context": None,
+            "recipients": "Admin,Control Operators,Control Owners",
+            "send_by_default": 0,
+            "assertions": [{
+                "id": assertion.id
+            }]
+        }
+    })
+
+    self.assertEqual(response.status_code, 201)
+    control = all_models.Control.query.first()
+    self.assertIsNotNone(control)
+    self.assertEqual(assertion.id, control.assertions[0].id)
+
+  def test_has_test_plan(self):
+    """Check test plan setup to control."""
+    control = factories.ControlFactory(test_plan="This is a test text")
+    control = db.session.query(all_models.Control).get(control.id)
+    self.assertEqual(control.test_plan, "This is a test text")

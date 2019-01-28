@@ -3,6 +3,7 @@
 
 """Test Access Control List validation."""
 import ddt
+import mock
 
 from ggrc import db
 from ggrc.models import all_models
@@ -16,7 +17,7 @@ class TestAccessControlListValidation(TestCase):
   def setUp(self):
     super(TestAccessControlListValidation, self).setUp()
     self.api = Api()
-    self.client.get("/login")
+    self.api.login_as_external()
 
     role_ids = db.session.query(
         all_models.AccessControlRole.id
@@ -28,6 +29,7 @@ class TestAccessControlListValidation(TestCase):
 
     self.control_admin_acr_id, self.objective_admin_acr_id = role_ids
 
+  @mock.patch("ggrc.settings.INTEGRATION_SERVICE_URL", "mock")
   def test_create_with_wrong_acl(self):
     """Test creation of object with wrong ACR in ACL."""
     response = self.api.post(all_models.Control, {

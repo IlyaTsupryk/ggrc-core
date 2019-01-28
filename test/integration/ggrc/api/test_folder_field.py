@@ -5,6 +5,7 @@
 import ddt
 
 from ggrc import db
+from ggrc.models.mixins.synchronizable import Synchronizable
 from integration.ggrc import TestCase, Api
 from integration.ggrc.models import factories
 
@@ -48,7 +49,7 @@ class TestFolderField(TestCase):
   def setUp(self):
     super(TestFolderField, self).setUp()
     self.api = Api()
-    self.client.get("/login")
+    self.api.login_as_normal()
 
   @ddt.data(*FOLDERABLE_FACTORIES)
   def test_create_object(self, factory):
@@ -85,6 +86,9 @@ class TestFolderField(TestCase):
       with self.assertRaises(NotImplementedError):
         self.api.put(obj, {"folder": update_test_folder_name})
     else:
+      if isinstance(obj, Synchronizable):
+        self.api.login_as_external()
+
       self.api.put(obj, {"folder": update_test_folder_name})
       self.assertEqual(
           update_test_folder_name,
@@ -107,6 +111,9 @@ class TestFolderField(TestCase):
       with self.assertRaises(NotImplementedError):
         self.api.post(model, post_data)
     else:
+      if isinstance(obj, Synchronizable):
+        self.api.login_as_external()
+
       resp = self.api.post(model, post_data)
       new_obj_id = resp.json[key]["id"]
       self.assertNotEqual(obj_id, new_obj_id)
