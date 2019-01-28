@@ -36,6 +36,9 @@ class TestReader(TestCase):
           data={"name": name}, user_role=role)
       self.users[name] = user
 
+    self.users["external"] = self.object_generator.generate_person(
+        data={"email": "external_app@example.com"})[1]
+
   def test_admin_page_access(self):
     """Only admin can use admin requirement"""
     for role, code in (("reader", 403), ("admin", 200)):
@@ -47,7 +50,7 @@ class TestReader(TestCase):
     self.api.set_user(self.users["reader"])
     all_errors = []
     base_models = set([
-        "Control", "DataAsset", "Contract",
+        "DataAsset", "Contract",
         "Policy", "Regulation", "Standard", "Document", "Facility",
         "Market", "Objective", "OrgGroup", "Vendor", "Product",
         "System", "Process", "Project", "AccessGroup",
@@ -156,7 +159,7 @@ class TestReader(TestCase):
 
   def test_creation_of_mappings(self):
     """Check if reader can't create mappings"""
-    self.object_generator.api.set_user(self.users["admin"])
+    self.object_generator.api.set_user(self.users["external"])
     _, control = self.object_generator.generate_object(
         all_models.Control,
         data={"control": {"title": "Test Control", "context": None}}

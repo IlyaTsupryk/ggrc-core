@@ -104,13 +104,14 @@ class TestProposalRelationship(TestCase):
 
   def test_rel_remove_parent(self):
     """Test if relationship will be removed if parent instance is removed."""
-    control = factories.ControlFactory()
-    self.create_proposal_for(control)
-    self.assertEqual(1, self.proposal_relationships(control).count())
+    risk = factories.RiskFactory()
+    self.create_proposal_for(risk)
+    self.assertEqual(1, self.proposal_relationships(risk).count())
 
-    response = self.api.delete(control)
+    response = self.api.delete(risk)
+
     self.assert200(response)
-    self.assertEqual(0, self.proposal_relationships(control).count())
+    self.assertEqual(0, self.proposal_relationships(risk).count())
 
   def test_rel_remove_proposal(self):
     """Test if relationship will be removed if proposal is removed."""

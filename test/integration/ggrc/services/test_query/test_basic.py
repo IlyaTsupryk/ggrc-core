@@ -17,6 +17,7 @@ from ggrc import app
 from ggrc import db
 from ggrc import models
 from ggrc.models import CustomAttributeDefinition as CAD, all_models
+from ggrc.models.mixins.synchronizable import Synchronizable
 from ggrc.snapshotter.rules import Types
 from ggrc.fulltext.attributes import DateValue
 
@@ -794,11 +795,21 @@ class TestAdvancedQueryAPI(WithQueryApi, TestCase):
   @ddt.unpack
   def test_search_relevant_to_type(self, base_type, relevant_types):
     """Test filter with 'relevant to' conditions."""
-    _, base_obj = self.generator.generate_object(base_type)
-    relevant_objects = [
-        self.generator.generate_object(type_)[1]
-        for type_ in relevant_types
-    ]
+    if issubclass(base_type, Synchronizable):
+      with self.generator.api.as_external():
+        _, base_obj = self.generator.generate_object(base_type)
+    else:
+      _, base_obj = self.generator.generate_object(base_type)
+
+    relevant_objects = []
+    for type_ in relevant_types:
+      if issubclass(type_, Synchronizable):
+        with self.generator.api.as_external():
+          obj = self.generator.generate_object(type_)[1]
+      else:
+        obj = self.generator.generate_object(type_)[1]
+
+      relevant_objects.append(obj)
 
     with factories.single_commit():
       query_data = []
@@ -867,10 +878,15 @@ class TestAdvancedQueryAPI(WithQueryApi, TestCase):
     audit_data = {"audit": {"id": audit.id}}
 
     _, base_obj = self.generator.generate_object(base_type, audit_data)
-    relevant_objects = [
-        self.generator.generate_object(type_, audit_data)[1]
-        for type_ in relevant_types
-    ]
+    relevant_objects = []
+    for type_ in relevant_types:
+      if issubclass(type_, Synchronizable):
+        with self.generator.api.as_external():
+          obj = self.generator.generate_object(type_, audit_data)[1]
+      else:
+        obj = self.generator.generate_object(type_, audit_data)[1]
+
+      relevant_objects.append(obj)
 
     with factories.single_commit():
       query_data = []

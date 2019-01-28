@@ -150,13 +150,13 @@ class TestReviewApi(TestCase):
 
   def test_reviewable_revisions(self):
     """Check that proper revisions are created"""
-    control = factories.ControlFactory()
+    program = factories.ProgramFactory()
     resp, review = self.generator.generate_object(
         all_models.Review,
         {
             "reviewable": {
-                "type": control.type,
-                "id": control.id,
+                "type": program.type,
+                "id": program.id,
             },
             "context": None,
             "status": all_models.Review.STATES.UNREVIEWED,
@@ -164,20 +164,20 @@ class TestReviewApi(TestCase):
             "notification_type": all_models.Review.NotificationTypes.EMAIL_TYPE
         },
     )
-    control_id = control.id
+    program_id = program.id
     reviewable = review.reviewable
 
-    control_revisions = all_models.Revision.query.filter_by(
-        resource_id=control_id,
-        resource_type=control.type
+    program_revisions = all_models.Revision.query.filter_by(
+        resource_id=program_id,
+        resource_type=program.type
     ).order_by(
         all_models.Revision.id,
     ).all()
-    self.assertEquals(2, len(control_revisions))
+    self.assertEquals(2, len(program_revisions))
     self.assertEquals(all_models.Review.STATES.UNREVIEWED,
-                      control_revisions[0].content["review_status"])
+                      program_revisions[0].content["review_status"])
     self.assertEquals(all_models.Review.STATES.UNREVIEWED,
-                      control_revisions[1].content["review_status"])
+                      program_revisions[1].content["review_status"])
     resp = self.api.put(
         review,
         {
@@ -186,15 +186,15 @@ class TestReviewApi(TestCase):
     )
     self.assert200(resp)
 
-    control_revisions = all_models.Revision.query.filter_by(
-        resource_id=control_id,
-        resource_type=control.type
+    program_revisions = all_models.Revision.query.filter_by(
+        resource_id=program_id,
+        resource_type=program.type
     ).order_by(
         all_models.Revision.id,
     ).all()
-    self.assertEquals(3, len(control_revisions))
+    self.assertEquals(3, len(program_revisions))
     self.assertEquals(all_models.Review.STATES.REVIEWED,
-                      control_revisions[2].content["review_status"])
+                      program_revisions[2].content["review_status"])
 
     resp = self.api.put(
         reviewable,
@@ -204,12 +204,12 @@ class TestReviewApi(TestCase):
     )
     self.assert200(resp)
 
-    control_revisions = all_models.Revision.query.filter_by(
-        resource_id=control_id,
-        resource_type=control.type
+    program_revisions = all_models.Revision.query.filter_by(
+        resource_id=program_id,
+        resource_type=program.type
     ).order_by(
         all_models.Revision.id,
     ).all()
-    self.assertEquals(4, len(control_revisions))
+    self.assertEquals(4, len(program_revisions))
     self.assertEquals(all_models.Review.STATES.UNREVIEWED,
-                      control_revisions[3].content["review_status"])
+                      program_revisions[3].content["review_status"])

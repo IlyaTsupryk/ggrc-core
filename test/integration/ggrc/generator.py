@@ -289,7 +289,6 @@ class ObjectGenerator(Generator):
     """Generate `count` objects of random types."""
     random_objects = []
     classes = [
-        models.Control,
         models.Objective,
         models.Standard,
         models.System,

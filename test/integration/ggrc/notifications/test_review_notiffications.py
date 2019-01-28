@@ -72,10 +72,10 @@ class TestReviewNotification(TestCase):
      Notification with notification type STATUS_UNREVIEWED created
     """
     with factories.single_commit():
-      control = factories.ControlFactory()
+      program = factories.ProgramFactory()
       review = factories.ReviewFactory(
           status=all_models.Review.STATES.REVIEWED,
-          reviewable=control,
+          reviewable=program,
           notification_type=notification_type
       )
     review_id = review.id
@@ -365,7 +365,8 @@ class TestReviewNotification(TestCase):
         },
     )
 
-    self.api.modify_object(review.reviewable, {"title": "new title"})
+    with self.api.as_external():
+      self.api.put(control, {"title": "new title"})
 
     with mock.patch.object(
         fast_digest.DIGEST_TMPL, "render"

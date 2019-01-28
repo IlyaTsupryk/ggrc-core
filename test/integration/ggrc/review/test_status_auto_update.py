@@ -62,7 +62,8 @@ class TestReviewStatusUpdate(TestCase):
   def setUp(self):
     super(TestReviewStatusUpdate, self).setUp()
     self.api = Api()
-    self.api.client.get("/login")
+    self.api.login_as_external()
+
     self.generator = generator.ObjectGenerator()
 
   @ddt.data(
@@ -463,6 +464,8 @@ class TestReviewStatusUpdate(TestCase):
 
   def test_unmap_snapshotable(self):
     """Unmap snapshotable should change review status"""
+    self.api.login_as_normal()
+
     control = factories.ControlFactory()
     resp, review = generate_review_object(control)
     review_id = review.id
@@ -516,6 +519,8 @@ class TestReviewStatusUpdate(TestCase):
 
   def test_unmap_nonsnapshotable(self):
     """Unmap nonsnapshotable shouldn't change review status"""
+    self.api.login_as_normal()
+
     control = factories.ControlFactory()
     resp, review = generate_review_object(
         control, state=all_models.Review.STATES.REVIEWED)

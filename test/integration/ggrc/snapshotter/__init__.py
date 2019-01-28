@@ -7,6 +7,7 @@ from collections import defaultdict
 from os.path import abspath, dirname, join
 
 import ggrc.models as models
+from ggrc.models.mixins.synchronizable import Synchronizable
 
 from integration.ggrc import api_helper
 from integration.ggrc import TestCase
@@ -37,7 +38,12 @@ class SnapshotterBaseTestCase(TestCase):
     self.api = api_helper.Api()
 
   def create_object(self, cls, data):
-    _, obj = self.objgen.generate_object(cls, data)
+    if issubclass(cls, Synchronizable):
+      with self.objgen.api.as_external():
+        _, obj = self.objgen.generate_object(cls, data)
+    else:
+      _, obj = self.objgen.generate_object(cls, data)
+
     return obj
 
   def create_mapping(self, src, dst):
