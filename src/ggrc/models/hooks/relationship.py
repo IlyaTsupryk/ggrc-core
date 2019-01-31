@@ -16,6 +16,7 @@ from ggrc.services import signals
 from ggrc.models import all_models
 from ggrc.models.comment import Commentable
 from ggrc.models.mixins.base import ChangeTracked
+from ggrc.models.mixins.synchronizable import Synchronizable
 from ggrc.models import exceptions
 
 
@@ -300,6 +301,14 @@ def copy_snapshot_test_plan(objects):
         assessment.copy_snapshot_plan(asmnt, snapshot)
 
 
+def delete_comment_notification(comment):
+  """Remove notification for external model comments."""
+  all_models.Notification.query.filter(
+      all_models.Notification.object_type == "Comment",
+      all_models.Notification.object_id == comment.id
+  ).delete()
+
+
 def init_hook():  # noqa
   """Initialize Relationship-related hooks."""
   # pylint: disable=unused-variable
@@ -354,3 +363,26 @@ def init_hook():  # noqa
     """Handle assessment test plan"""
     # pylint: disable=unused-argument
     copy_snapshot_test_plan(objects)
+
+  @signals.Restful.collection_posted.connect_via(all_models.Relationship)
+  def handle_comment_external_model(_, objects=None, sources=None, **kwargs):
+    """Handle comment mapping to external model.
+
+    We want to prevent creation of notifications for external models.
+    Currently our system creates notifications for comments during Comment
+    creation. However on that step set we cannot check if commented model is
+    external model, because we map comment and model using second request by
+    creating relationship.
+    So to remove sending of notification for comments on external models,
+    we handle relationship creation and check if it maps comment and external
+    model.
+    """
+    del sources, kwargs
+
+    for obj in objects:
+      if all((isinstance(obj.source, Synchronizable),
+              isinstance(obj.destination, all_models.Comment))):
+        delete_comment_notification(obj.destination)
+      elif all((isinstance(obj.destination, Synchronizable),
+                isinstance(obj.source, all_models.Comment))):
+        delete_comment_notification(obj.source)

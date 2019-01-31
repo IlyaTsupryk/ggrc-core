@@ -19,6 +19,7 @@ from ggrc.models.mixins import issue_tracker
 from ggrc.models.mixins import rest_handable
 from ggrc.models.mixins import with_proposal_handable
 from ggrc.models.mixins import with_mappimg_via_import_handable
+from ggrc.models.mixins import synchronizable
 
 from ggrc.models.relationship import Relatable
 
@@ -162,6 +163,10 @@ class Reviewable(rest_handable.WithPutHandable,
 
   def add_email_notification(self):
     """Add email notification of type STATUS_UNREVIEWED"""
+    if isinstance(self, synchronizable.Synchronizable):
+      # External objects should not be notified.
+      return
+
     review_notif_type = self.review.notification_type
     if review_notif_type == Review.NotificationTypes.EMAIL_TYPE:
       add_notification(self.review,
@@ -285,7 +290,8 @@ class Review(mixins.person_relation_factory("last_reviewed_by"),
     self._create_relationship()
     self._update_new_reviewed_by()
     if (self.notification_type == Review.NotificationTypes.EMAIL_TYPE and
-            self.status == Review.STATES.UNREVIEWED):
+        self.status == Review.STATES.UNREVIEWED and
+            not isinstance(self.reviewable, synchronizable.Synchronizable)):
       add_notification(self, Review.NotificationObjectTypes.REVIEW_CREATED)
 
   def handle_put(self):
