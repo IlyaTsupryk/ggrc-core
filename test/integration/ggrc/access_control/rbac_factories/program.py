@@ -101,7 +101,7 @@ class ProgramRBACFactory(base.BaseRBACFactory):
     return self.api.delete(rel)
 
   def read_mapped(self):
-    """Read control mapped to Program."""
+    """Read project mapped to Program."""
     program = all_models.Program.query.get(self.program_id)
     with factories.single_commit():
       project = factories.ProjectFactory()
@@ -109,7 +109,7 @@ class ProgramRBACFactory(base.BaseRBACFactory):
     return self.api.get(project, project.id)
 
   def update_mapped(self):
-    """Update control mapped to Program."""
+    """Update project mapped to Program."""
     program = all_models.Program.query.get(self.program_id)
     with factories.single_commit():
       project = factories.ProjectFactory()
@@ -117,7 +117,7 @@ class ProgramRBACFactory(base.BaseRBACFactory):
     return self.api.put(project, {"title": factories.random_str()})
 
   def delete_mapped(self):
-    """Delete control mapped to Program."""
+    """Delete project mapped to Program."""
     program = all_models.Program.query.get(self.program_id)
     with factories.single_commit():
       project = factories.ProjectFactory()

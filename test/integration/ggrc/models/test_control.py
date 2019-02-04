@@ -246,3 +246,57 @@ class TestSyncServiceControl(TestCase):
     control = factories.ControlFactory(test_plan="This is a test text")
     control = db.session.query(all_models.Control).get(control.id)
     self.assertEqual(control.test_plan, "This is a test text")
+
+  def test_set_end_date(self):
+    """End_date can't to be updated."""
+    control = factories.ControlFactory()
+    self.api.put(control, {"end_date": "2015-10-10"})
+    control = db.session.query(all_models.Control).get(control.id)
+    self.assertIsNone(control.end_date)
+
+  def test_set_deprecated_status(self):
+    """Deprecated status setup end_date."""
+    control = factories.ControlFactory()
+    self.assertIsNone(control.end_date)
+    self.api.put(control, {"status": all_models.Control.DEPRECATED})
+    control = db.session.query(all_models.Control).get(control.id)
+    self.assertIsNotNone(control.end_date)
+
+  def test_create_commentable(self):
+    """Test if commentable fields are set on creation"""
+    with factories.single_commit():
+      assertion = factories.ControlAssertionFactory()
+    recipients = "Admin,Control Operators,Control Owners"
+    send_by_default = 0
+    response = self.api.post(all_models.Control, {
+        "control": {
+            "title": "Control title",
+            "context": None,
+            "recipients": recipients,
+            "send_by_default": send_by_default,
+            "assertions": [{
+                "id": assertion.id
+            }]
+        },
+    })
+    self.assertEqual(response.status_code, 201)
+    control_id = response.json.get("control").get("id")
+    control = db.session.query(all_models.Control).get(control_id)
+    self.assertEqual(control.recipients, recipients)
+    self.assertEqual(control.send_by_default, send_by_default)
+
+  def test_update_commentable(self):
+    """Test update of commentable fields"""
+    control = factories.ControlFactory()
+    self.assertEqual(control.recipients, "")
+    self.assertIs(control.send_by_default, True)
+
+    recipients = "Admin,Control Operators,Control Owners"
+    send_by_default = 0
+    self.api.put(control, {
+        "recipients": recipients,
+        "send_by_default": send_by_default,
+    })
+    control = db.session.query(all_models.Control).get(control.id)
+    self.assertEqual(control.recipients, recipients)
+    self.assertEqual(control.send_by_default, send_by_default)
