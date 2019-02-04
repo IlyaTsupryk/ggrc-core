@@ -6,7 +6,6 @@
 from sqlalchemy import orm
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import validates
 
 from ggrc import db
 from ggrc import login
@@ -23,7 +22,6 @@ from ggrc.models.mixins.with_last_assessment_date import WithLastAssessmentDate
 from ggrc.models.deferred import deferred
 from ggrc.models.object_person import Personable
 from ggrc.models.relationship import Relatable
-from ggrc.models.utils import validate_option
 from ggrc.fulltext.mixin import Indexed
 from ggrc.fulltext import attributes
 from ggrc.models import reflection
@@ -254,29 +252,13 @@ class Control(Synchronizable,
   company_control = deferred(db.Column(db.Boolean), 'Control')
   directive_id = deferred(
       db.Column(db.Integer, db.ForeignKey('directives.id')), 'Control')
-  kind_id = deferred(db.Column(db.Integer), 'Control')
-  means_id = deferred(db.Column(db.Integer), 'Control')
   version = deferred(db.Column(db.String), 'Control')
-  verify_frequency_id = deferred(db.Column(db.Integer), 'Control')
   fraud_related = deferred(db.Column(db.Boolean), 'Control')
   key_control = deferred(db.Column(db.Boolean), 'Control')
   active = deferred(db.Column(db.Boolean), 'Control')
-
-  kind = db.relationship(
-      'Option',
-      primaryjoin='and_(foreign(Control.kind_id) == Option.id, '
-                  'Option.role == "control_kind")',
-      uselist=False)
-  means = db.relationship(
-      'Option',
-      primaryjoin='and_(foreign(Control.means_id) == Option.id, '
-                  'Option.role == "control_means")',
-      uselist=False)
-  verify_frequency = db.relationship(
-      'Option',
-      primaryjoin='and_(foreign(Control.verify_frequency_id) == Option.id, '
-                  'Option.role == "verify_frequency")',
-      uselist=False)
+  kind = deferred(db.Column(db.String), "Control")
+  means = deferred(db.Column(db.String), "Control")
+  verify_frequency = deferred(db.Column(db.String), "Control")
 
   # REST properties
   _api_attrs = reflection.ApiAttributes(
@@ -334,21 +316,6 @@ class Control(Synchronizable,
         ).undefer_group(
             "Directive_complete"
         ),
-        orm.Load(cls).joinedload(
-            'kind',
-        ).load_only(
-            "title"
-        ),
-        orm.Load(cls).joinedload(
-            'means',
-        ).load_only(
-            "title"
-        ),
-        orm.Load(cls).joinedload(
-            'verify_frequency',
-        ).load_only(
-            "title"
-        ),
     )
 
   _include_links = []
@@ -365,20 +332,11 @@ class Control(Synchronizable,
       "test_plan": "Assessment Procedure",
   }
 
-  @validates('kind', 'means', 'verify_frequency')
-  def validate_control_options(self, key, option):
-    """Validate control 'kind', 'means', 'verify_frequency'"""
-    desired_role = key if key == 'verify_frequency' else 'control_' + key
-    return validate_option(self.__class__.__name__, key, option, desired_role)
-
   @classmethod
   def eager_query(cls):
     query = super(Control, cls).eager_query()
     return cls.eager_inclusions(query, Control._include_links).options(
         orm.joinedload('directive'),
-        orm.joinedload('kind'),
-        orm.joinedload('means'),
-        orm.joinedload('verify_frequency'),
     )
 
   def log_json(self):
