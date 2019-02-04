@@ -245,6 +245,7 @@ class Revision(ChangesSynchronized, Filterable, base.ContextRBAC, Base,
 
   def populate_acl(self):
     """Add access_control_list info for older revisions."""
+    # pylint: disable=too-many-locals
     roles_dict = role.get_custom_roles_for(self.resource_type)
     reverted_roles_dict = {n: i for i, n in roles_dict.iteritems()}
     access_control_list = self._content.get("access_control_list") or []
@@ -557,6 +558,18 @@ class Revision(ChangesSynchronized, Filterable, base.ContextRBAC, Base,
             cav["attributable_type"] = "Requirement"
         populated_content["custom_attribute_values"] = cavs
 
+  def populate_options(self, populated_content):
+    """Update revisions for Sync models to have Option fields as string."""
+    if self.resource_type == "Control":
+      for attr in ["kind", "means", "verify_frequency"]:
+        attr_value = populated_content.get(attr)
+        if isinstance(attr_value, dict):
+          populated_content[attr] = attr_value.get("title")
+        elif isinstance(attr_value, (str, unicode)):
+          populated_content[attr] = attr_value
+        else:
+          populated_content[attr] = None
+
   @builder.simple_property
   def content(self):
     """Property. Contains the revision content dict.
@@ -577,6 +590,7 @@ class Revision(ChangesSynchronized, Filterable, base.ContextRBAC, Base,
     populated_content.update(self.populate_cavs())
 
     self.populate_requirements(populated_content)
+    self.populate_options(populated_content)
     # remove custom_attributes,
     # it's old style interface and now it's not needed
     populated_content.pop("custom_attributes", None)
