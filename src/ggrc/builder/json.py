@@ -752,7 +752,7 @@ class Builder(AttributeInfo):
       sync_attrs = obj.get_sync_attrs()
       attrs.update(sync_attrs)
 
-    self.do_update_attrs(obj, json_obj, list(attrs))
+    self.do_update_attrs(obj, json_obj, attrs)
 
   def create(self, obj, json_obj):
     """Update the state of the new model object ``obj`` to be equivalent to the
@@ -764,4 +764,4 @@ class Builder(AttributeInfo):
       sync_attrs = obj.get_sync_attrs()
       attrs.update(sync_attrs)
 
-    self.do_update_attrs(obj, json_obj, list(attrs))
+    self.do_update_attrs(obj, json_obj, attrs)
