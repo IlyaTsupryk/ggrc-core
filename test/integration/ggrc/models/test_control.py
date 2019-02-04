@@ -5,9 +5,13 @@
 from datetime import datetime
 import json
 
+import ddt
 import mock
 
-from ggrc import db
+from sqlalchemy.ext import associationproxy
+from sqlalchemy.orm import collections
+
+from ggrc import db, settings
 from ggrc.models import all_models
 from integration.ggrc import TestCase
 from integration.ggrc.models import factories
@@ -64,6 +68,7 @@ class TestControl(TestCase):
     self.assertIsNotNone(control.title)
 
 
+@ddt.ddt
 class TestSyncServiceControl(TestCase):
   """Tests for control model using sync service."""
 
@@ -75,6 +80,8 @@ class TestSyncServiceControl(TestCase):
     self.app_user_email = "external_app@example.com"
     self.ext_user_email = 'external@example.com'
 
+    settings.EXTERNAL_APP_USER = self.app_user_email
+
     custom_headers = {
         'X-GGRC-user': '{"email": "%s"}' % self.app_user_email,
         'X-external-user': '{"email": "%s"}' % self.ext_user_email
@@ -82,6 +89,104 @@ class TestSyncServiceControl(TestCase):
 
     self.api.headers.update(custom_headers)
     self.api.client.get("/login", headers=self.api.headers)
+
+  @staticmethod
+  def prepare_control_request_body():
+    """Create payload for control creation."""
+    created_at = datetime(2018, 1, 1)
+    updated_at = datetime(2018, 1, 2)
+    category = factories.ControlCategoryFactory()
+    assertion = factories.ControlAssertionFactory()
+
+    return {
+        "id": 123,
+        "title": "new_control",
+        "context": None,
+        "created_at": created_at,
+        "updated_at": updated_at,
+        "slug": "CONTROL-01",
+        "kind": "test kind",
+        "means": "test means",
+        "verify_frequency": "test frequency",
+        "categories": [
+            {
+                "id": category.id,
+                "type": "ControlCategory"
+            }
+        ],
+        "assertions": [
+            {
+                "id": assertion.id,
+                "type": "ControlAssertion",
+            }
+        ]
+    }
+
+  def normilize_field(self, field):
+    """Convert field from date/db.Model/query to string value."""
+    # pylint: disable=protected-access
+    normilized_field = field
+    if isinstance(normilized_field, datetime):
+      normilized_field = str(normilized_field.date())
+    elif isinstance(normilized_field, db.Model):
+      normilized_field = {
+          "type": normilized_field.type,
+          "id": normilized_field.id
+      }
+    elif isinstance(normilized_field, dict):
+      normilized_field.pop("context_id", None)
+      normilized_field.pop("href", None)
+    elif isinstance(normilized_field, list):
+      normilized_field = [self.normilize_field(i) for i in normilized_field]
+    elif isinstance(
+        normilized_field,
+        (associationproxy._AssociationList, collections.InstrumentedList)
+    ):
+      normilized_field = [
+          {"type": i.type, "id": i.id} for i in normilized_field
+      ]
+    return normilized_field
+
+  def assert_response_fields(self, response_json, expected_body):
+    """Check if data in response is the same with expected."""
+    for field, value in expected_body.items():
+      response_field = self.normilize_field(response_json[field])
+      expected_value = self.normilize_field(value)
+
+      self.assertEqual(
+          response_field,
+          expected_value,
+          "Fields '{}' are not equal".format(field)
+      )
+
+  def assert_object_fields(self, object_, expected_body):
+    """Check if object field values are the same with expected."""
+    for field, value in expected_body.items():
+      obj_value = self.normilize_field(getattr(object_, field))
+      expected_value = self.normilize_field(value)
+      self.assertEqual(
+          obj_value,
+          expected_value,
+          "Fields '{}' are not equal".format(field)
+      )
+
+  def test_control_read(self):
+    """Test correctness of control field values on read operation."""
+    control_body = {
+        "title": "test control",
+        "slug": "CONTROL-01",
+        "kind": "test kind",
+        "means": "test means",
+        "verify_frequency": "test frequency",
+    }
+    control = factories.ControlFactory(**control_body)
+
+    response = self.api.get(all_models.Control, control.id)
+    self.assert200(response)
+
+    self.assert_response_fields(response.json.get("control"), control_body)
+    control = all_models.Control.query.get(control.id)
+    self.assert_object_fields(control, control_body)
 
   @mock.patch("ggrc.settings.INTEGRATION_SERVICE_URL", "mock")
   def test_control_create(self):
@@ -92,7 +197,7 @@ class TestSyncServiceControl(TestCase):
         "control": control_body
     })
 
-    self.assertEqual(201, response.status_code)
+    self.assertEqual(response.status_code, 201)
 
     id_ = response.json.get("control").get("id")
     self.assertEqual(control_body["id"], id_)
@@ -103,19 +208,11 @@ class TestSyncServiceControl(TestCase):
     ext_user = db.session.query(all_models.Person).filter(
         all_models.Person.email == self.ext_user_email).one()
 
-    self.assertEqual(app_user.id, ext_user.modified_by_id)
-    self.assertEqual(ext_user.id, control.modified_by_id)
+    self.assertEqual(ext_user.modified_by_id, app_user.id)
+    self.assertEqual(control.modified_by_id, ext_user.id)
 
-    self.assertEqual(control.title, control_body["title"])
-    self.assertEqual(control.slug, control_body["slug"])
-    self.assertEqual(control.created_at, control_body["created_at"])
-    self.assertEqual(control.updated_at, control_body["updated_at"])
-
-    expected_categories = {
-        category["id"] for category in control_body["categories"]
-    }
-    mapped_categories = {category.id for category in control.categories}
-    self.assertEqual(expected_categories, mapped_categories)
+    self.assert_response_fields(response.json.get("control"), control_body)
+    self.assert_object_fields(control, control_body)
 
     revision = db.session.query(all_models.Revision).filter(
         all_models.Revision.resource_type == "Control",
@@ -125,7 +222,6 @@ class TestSyncServiceControl(TestCase):
         all_models.Revision.updated_at == control.updated_at,
         all_models.Revision.modified_by_id == control.modified_by_id,
     ).one()
-
     self.assertIsNotNone(revision)
 
   @staticmethod
@@ -164,21 +260,25 @@ class TestSyncServiceControl(TestCase):
 
     response = self.api.get(control, control.id)
 
-    api_link = response.json["control"]["selfLink"]
+    api_link = response.json["control"].pop("selfLink")
+    response.json["control"].pop("viewLink")
 
     control_body = response.json["control"]
-    control_body["title"] = "updated_title"
-    control_body["created_at"] = "2018-01-04"
-    control_body["updated_at"] = "2018-01-05"
-
+    control_body.update({
+        "title": "updated_title",
+        "created_at": "2018-01-04",
+        "updated_at": "2018-01-05",
+        "kind": "test kind",
+        "means": "test means",
+        "verify_frequency": "test frequency",
+    })
     self.api.client.put(api_link,
-                        data=json.dumps(response.json),
+                        data=json.dumps(control_body),
                         headers=self.api.headers)
 
-    control = db.session.query(all_models.Control).get(control.id)
-    self.assertEqual("updated_title", control.title)
-    self.assertEqual("2018-01-04", control.created_at.strftime("%Y-%m-%d"))
-    self.assertEqual("2018-01-05", control.updated_at.strftime("%Y-%m-%d"))
+    self.assert_response_fields(response.json["control"], control_body)
+    control = all_models.Control.query.get(control.id)
+    self.assert_object_fields(control, control_body)
 
     revision = db.session.query(all_models.Revision).filter(
         all_models.Revision.resource_type == "Control",
@@ -188,7 +288,6 @@ class TestSyncServiceControl(TestCase):
         all_models.Revision.updated_at == control.updated_at,
         all_models.Revision.modified_by_id == control.modified_by_id,
     ).one()
-
     self.assertIsNotNone(revision)
 
   def test_create_without_assertions(self):
@@ -341,3 +440,100 @@ class TestSyncServiceControl(TestCase):
 
     control = db.session.query(all_models.Control).get(control.id)
     self.assertEquals(control.external_id, new_value)
+
+  def test_review_get(self):
+    """Test that review data is present in control get response"""
+    with factories.single_commit():
+      control = factories.ControlFactory()
+      review = factories.ReviewFactory(reviewable=control)
+      review_id = review.id
+
+    resp = self.api.get(all_models.Control, control.id)
+    self.assert200(resp)
+    resp_control = resp.json["control"]
+    self.assertIn("review", resp_control)
+    self.assertEquals(review_id, resp_control["review"]["id"])
+
+  @ddt.data(
+      ("kind", ["1", "2", "3"], "2"),
+      ("means", ["1", "1", "1"], "1"),
+      ("verify_frequency", ["3", "2", "3"], "3")
+  )
+  @ddt.unpack
+  def test_control_query(self, field, possible_values, search_value):
+    """Test querying '{0}' field for control."""
+    with factories.single_commit():
+      for val in possible_values:
+        factories.ControlFactory(**{field: val})
+
+    request_data = [{
+        'fields': [],
+        'filters': {
+            'expression': {
+                'left': field,
+                'op': {'name': '='},
+                'right': search_value,
+            },
+        },
+        'object_name': 'Control',
+        'type': 'values',
+    }]
+    response = self.api.send_request(
+        self.api.client.post,
+        data=request_data,
+        api_link="/query"
+    )
+    self.assert200(response)
+    response_data = response.json[0]["Control"]
+
+    expected_controls = all_models.Control.query.filter_by(
+        **{field: search_value}
+    )
+    self.assertEqual(expected_controls.count(), response_data.get("count"))
+
+    expected_values = [getattr(i, field) for i in expected_controls]
+    actual_values = [val.get(field) for val in response_data.get("values")]
+    self.assertEqual(expected_values, actual_values)
+
+  @ddt.data("kind", "means", "verify_frequency")
+  def test_new_revision(self, field):
+    """Test if content of new revision is correct for Control '{0}' field."""
+    field_value = factories.random_str()
+    control = factories.ControlFactory(**{field: field_value})
+
+    response = self.api.client.get(
+        "/api/revisions"
+        "?resource_type={}&resource_id={}".format(control.type, control.id)
+    )
+    self.assert200(response)
+    revisions = response.json["revisions_collection"]["revisions"]
+    self.assertEqual(len(revisions), 1)
+    self.assertEqual(revisions[0].get("content", {}).get(field), field_value)
+
+  @ddt.data("kind", "means", "verify_frequency")
+  def test_old_revision(self, field):
+    """Test if old revision content is correct for Control '{0}' field."""
+    field_value = factories.random_str()
+    control = factories.ControlFactory(**{field: field_value})
+    option = all_models.Option.query.filter(
+        all_models.Option.role.like("%{}".format(field))
+    ).first()
+    control_revision = all_models.Revision.query.filter_by(
+        resource_type=control.type,
+        resource_id=control.id
+    ).one()
+    control_revision.content[field] = {
+        "id": option.id,
+        "title": option.title,
+        "type": "Option",
+    }
+    db.session.commit()
+
+    response = self.api.client.get(
+        "/api/revisions"
+        "?resource_type={}&resource_id={}".format(control.type, control.id)
+    )
+    self.assert200(response)
+    revisions = response.json["revisions_collection"]["revisions"]
+    self.assertEqual(len(revisions), 1)
+    self.assertEqual(revisions[0].get("content", {}).get(field), field_value)
