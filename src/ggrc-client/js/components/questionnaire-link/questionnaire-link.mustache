@@ -1,0 +1,11 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#if isChangeableExternally}}
+  <a class="questionnaire-link" href="{{infoUrl}}" target="_blank">
+    <i class="fa fa-external-link"></i>
+    Open {{instance.class.title_singular}} in new frontend
+  </a>
+{{/if}}
