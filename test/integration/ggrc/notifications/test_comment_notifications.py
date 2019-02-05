@@ -164,7 +164,6 @@ class TestCommentNotification(TestCase):
 
   @ddt.data(
       factories.AccessGroupFactory,
-      factories.ControlFactory,
       factories.DataAssetFactory,
       factories.FacilityFactory,
       factories.MarketFactory,
@@ -211,7 +210,7 @@ class TestCommentNotification(TestCase):
           recipients=",".join(recipient_types),
           send_by_default=False,
       )
-      for acl in obj._access_control_list:
+      for acl in obj._access_control_list:  # pylint: disable=protected-access
         if acl.ac_role.name in recipient_types:
           factories.AccessControlPersonFactory(
               ac_list=acl,

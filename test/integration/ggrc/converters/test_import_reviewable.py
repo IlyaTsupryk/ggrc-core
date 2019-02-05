@@ -46,26 +46,25 @@ class TestImportReviewable(TestCase):
     Review -> UNREVIEWED
     Email Notification added
     """
-    control = factories.ControlFactory(title="Test control")
+    program = factories.ProgramFactory(title="Test program")
 
     resp, review = generate_review_object(
-        control, state=all_models.Review.STATES.REVIEWED)
-    control_id = control.id
+        program, state=all_models.Review.STATES.REVIEWED)
+    control_id = program.id
     self.assertEqual(201, resp.status_code)
     import_data = OrderedDict(
         [
-            ("object_type", "Control"),
-            ("Code*", control.slug),
+            ("object_type", "Program"),
+            ("Code*", program.slug),
             ("Title*", "Brand new TiTle"),
-            ("Admin*", "user@example.com"),
-            ("Assertions", "Privacy"),
+            ("Program Managers", "user@example.com"),
         ]
     )
     response = self.import_data(import_data)
     self._check_csv_response(response, {})
-    control = all_models.Control.query.get(control_id)
+    program = all_models.Program.query.get(control_id)
     self.assertEqual(
-        all_models.Review.STATES.UNREVIEWED, control.review_status
+        all_models.Review.STATES.UNREVIEWED, program.review_status
     )
     notification = all_models.Notification.query.filter_by(
         object_id=review.id, object_type="Review"
@@ -77,29 +76,29 @@ class TestImportReviewable(TestCase):
     Review -> UNREVIEWED
     Email Notification added
     """
-    control = factories.ControlFactory(
-        title="Test control"
+    program = factories.ProgramFactory(
+        title="Test program"
     )
     product = factories.ProductFactory()
     product_slug = product.slug
 
     resp, review = generate_review_object(
-        control, state=all_models.Review.STATES.REVIEWED)
-    control_id = control.id
+        program, state=all_models.Review.STATES.REVIEWED)
+    program_id = program.id
     self.assertEqual(201, resp.status_code)
     import_data = OrderedDict(
         [
-            ("object_type", "Control"),
-            ("Code*", control.slug),
+            ("object_type", "Program"),
+            ("Code*", program.slug),
             ("map:Product", product_slug)
         ]
     )
     response = self.import_data(import_data)
     self._check_csv_response(response, {})
-    control = all_models.Control.query.get(control_id)
+    program = all_models.Program.query.get(program_id)
     self.assertEqual(
         all_models.Review.STATES.UNREVIEWED,
-        control.review_status
+        program.review_status
     )
     notification = all_models.Notification.query.filter_by(
         object_id=review.id, object_type="Review"
