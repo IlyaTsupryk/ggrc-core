@@ -633,15 +633,15 @@ class TestSnapshotIndexing(SnapshotterBaseTestCase):
     without 'title' attribute.
     """
     with factories.single_commit():
-      control = factories.ControlFactory()
+      product = factories.ProductFactory()
       audit = factories.AuditFactory()
       option = factories.OptionFactory()
       audit_id = audit.id
-      control_id = control.id
+      product_id = product.id
       option_title = option.title
     revision = all_models.Revision.query.filter(
-        all_models.Revision.resource_id == control.id,
-        all_models.Revision.resource_type == control.type
+        all_models.Revision.resource_id == product.id,
+        all_models.Revision.resource_type == product.type
     ).one()
     revision_content = revision.content
     revision_content["kind"] = {
@@ -653,13 +653,13 @@ class TestSnapshotIndexing(SnapshotterBaseTestCase):
     revision.content = revision_content
     db.session.add(revision)
     db.session.commit()
-    self._create_snapshots(audit, [control])
+    self._create_snapshots(audit, [product])
     self.client.post("/admin/reindex_snapshots")
     snapshot = all_models.Snapshot.query.filter(
         all_models.Snapshot.parent_id == audit_id,
         all_models.Snapshot.parent_type == "Audit",
-        all_models.Snapshot.child_id == control_id,
-        all_models.Snapshot.child_type == "Control",
+        all_models.Snapshot.child_id == product_id,
+        all_models.Snapshot.child_type == "Product",
     ).one()
     self.assert_indexed_fields(snapshot, "kind", {
         "": option_title
