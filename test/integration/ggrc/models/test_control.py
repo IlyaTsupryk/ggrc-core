@@ -105,6 +105,7 @@ class TestSyncServiceControl(TestCase):
         "created_at": created_at,
         "updated_at": updated_at,
         "slug": "CONTROL-01",
+        "external_id": factories.SynchronizableExternalId.next(),
         "kind": "test kind",
         "means": "test means",
         "verify_frequency": "test frequency",
@@ -224,40 +225,11 @@ class TestSyncServiceControl(TestCase):
     ).one()
     self.assertIsNotNone(revision)
 
-  @staticmethod
-  def prepare_control_request_body():
-    """Create payload for control creation."""
-    created_at = datetime(2018, 1, 1)
-    updated_at = datetime(2018, 1, 2)
-    category = factories.ControlCategoryFactory()
-    assertion = factories.ControlAssertionFactory()
-
-    return {
-        "id": 123,
-        "title": "new_control",
-        "context": None,
-        "created_at": created_at,
-        "updated_at": updated_at,
-        "slug": "CONTROL-01",
-        "external_id": factories.SynchronizableExternalId.next(),
-        "categories": [
-            {
-                "id": category.id,
-                "type": "ControlCategory"
-            }
-        ],
-        "assertions": [
-            {
-                "id": assertion.id
-            }
-        ]
-    }
-
   @mock.patch("ggrc.settings.INTEGRATION_SERVICE_URL", "mock")
   def test_control_update(self):
     """Test control update using sync service."""
-    control = factories.ControlFactory()
-
+    external_user = factories.PersonFactory(email=self.ext_user_email)
+    control = factories.ControlFactory(modified_by=external_user)
     response = self.api.get(control, control.id)
 
     api_link = response.json["control"].pop("selfLink")
@@ -273,7 +245,7 @@ class TestSyncServiceControl(TestCase):
         "verify_frequency": "test frequency",
     })
     self.api.client.put(api_link,
-                        data=json.dumps(control_body),
+                        data=json.dumps(response.json),
                         headers=self.api.headers)
 
     self.assert_response_fields(response.json["control"], control_body)
@@ -441,19 +413,6 @@ class TestSyncServiceControl(TestCase):
     control = db.session.query(all_models.Control).get(control.id)
     self.assertEquals(control.external_id, new_value)
 
-  def test_review_get(self):
-    """Test that review data is present in control get response"""
-    with factories.single_commit():
-      control = factories.ControlFactory()
-      review = factories.ReviewFactory(reviewable=control)
-      review_id = review.id
-
-    resp = self.api.get(all_models.Control, control.id)
-    self.assert200(resp)
-    resp_control = resp.json["control"]
-    self.assertIn("review", resp_control)
-    self.assertEquals(review_id, resp_control["review"]["id"])
-
   @ddt.data(
       ("kind", ["1", "2", "3"], "2"),
       ("means", ["1", "1", "1"], "1"),
@@ -515,16 +474,13 @@ class TestSyncServiceControl(TestCase):
     """Test if old revision content is correct for Control '{0}' field."""
     field_value = factories.random_str()
     control = factories.ControlFactory(**{field: field_value})
-    option = all_models.Option.query.filter(
-        all_models.Option.role.like("%{}".format(field))
-    ).first()
     control_revision = all_models.Revision.query.filter_by(
         resource_type=control.type,
         resource_id=control.id
     ).one()
     control_revision.content[field] = {
-        "id": option.id,
-        "title": option.title,
+        "id": "123",
+        "title": "some title",
         "type": "Option",
     }
     db.session.commit()

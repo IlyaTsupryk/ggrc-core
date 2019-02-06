@@ -6,7 +6,7 @@
 # pylint: disable=too-many-lines
 
 """Tests for /query api endpoint."""
-
+import random
 import unittest
 
 from datetime import datetime
@@ -444,92 +444,55 @@ class TestAdvancedQueryAPI(WithQueryApi, TestCase):
         self._sort_sublists(expected),
     )
 
-  def test_filter_control_by_frequency(self):
-    """Test correct filtering by frequency"""
-    controls = self._get_first_result_set(
-        self._make_query_dict("Control",
-                              expression=["frequency", "=", "yearly"]),
-        "Control",
-    )
-    self.assertEqual(controls["count"], 4)
-
-  @ddt.data(
-      ("Frequency", "verify_frequency"),
-      ("kind/nature", "kind"),
-      ("type/means", "means"),
-  )
-  @ddt.unpack
-  def test_order_control_by_option(self, order_key, val_key):
+  def test_order_control_by_option(self):
     """Test correct ordering and by option."""
-    controls_unordered = self._get_first_result_set(
-        self._make_query_dict("Control",),
-        "Control", "values"
+    options = all_models.Option.query.filter_by(role="network_zone").all()
+    self.assertEqual(len(options), 5)
+    random.shuffle(options)
+    with factories.single_commit():
+      for option in options:
+        factories.SystemFactory(network_zone=option)
+
+    systems_unordered = self._get_first_result_set(
+        self._make_query_dict("System",),
+        "System", "values"
     )
-    controls_ordered_1 = self._get_first_result_set(
-        self._make_query_dict("Control",
-                              order_by=[{"name": order_key},
+    systems_ordered_1 = self._get_first_result_set(
+        self._make_query_dict("System",
+                              order_by=[{"name": "Network Zone"},
                                         {"name": "id"}]),
-        "Control", "values"
+        "System", "values"
     )
     options_map = {o.id: o.title for o in models.Option.query}
 
     def sort_key(val):
       """sorting key getter function"""
-      option = val[val_key]
+      option = val["network_zone"]
       if not option:
         return None
       return options_map[option["id"]]
 
-    controls_ordered_2 = sorted(controls_unordered, key=sort_key)
+    systems_ordered_2 = sorted(systems_unordered, key=sort_key)
     self.assertListEqual(
-        self._sort_sublists(controls_ordered_1),
-        self._sort_sublists(controls_ordered_2),
+        self._sort_sublists(systems_ordered_1),
+        self._sort_sublists(systems_ordered_2),
     )
 
-  def test_filter_control_by_kind(self):
-    """Test correct filtering by kind/nature"""
-    controls = self._get_first_result_set(
-        self._make_query_dict("Control",
-                              expression=["kind/nature", "=", "Corrective"]),
-        "Control",
-    )
-    self.assertEqual(controls["count"], 3)
+  def test_filter_system_by_zone(self):
+    """Test correct filtering by Network Zone"""
+    options = all_models.Option.query.filter_by(role="network_zone")
+    with factories.single_commit():
+      for option in options:
+        factories.SystemFactory(network_zone=option)
 
-  def test_filter_control_by_means(self):
-    """Test correct filtering by means"""
-    controls = self._get_first_result_set(
-        self._make_query_dict("Control",
-                              expression=["type/means", "=", "Physical"]),
-        "Control",
+    systems = self._get_first_result_set(
+        self._make_query_dict(
+            "System",
+            expression=["Network Zone", "=", "Corp"]
+        ),
+        "System",
     )
-    self.assertEqual(controls["count"], 3)
-
-  def test_order_control_by_means(self):
-    """Test correct ordering and by means"""
-    controls_unordered = self._get_first_result_set(
-        self._make_query_dict("Control",),
-        "Control", "values"
-    )
-    controls_ordered_1 = self._get_first_result_set(
-        self._make_query_dict("Control",
-                              order_by=[{"name": "type/means"},
-                                        {"name": "id"}]),
-        "Control", "values"
-    )
-    options_map = {o.id: o.title for o in models.Option.query}
-
-    def sort_key(val):
-      """sorting key getter function"""
-      kind = val["means"]
-      if not kind:
-        return None
-      return options_map[kind["id"]]
-
-    controls_ordered_2 = sorted(controls_unordered, key=sort_key)
-    self.assertListEqual(
-        self._sort_sublists(controls_ordered_1),
-        self._sort_sublists(controls_ordered_2),
-    )
+    self.assertEqual(systems["count"], 1)
 
   def test_query_related_people_for_program(self):
     """Test correct querying of the related people to Program"""

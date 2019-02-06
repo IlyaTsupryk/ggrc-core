@@ -3,6 +3,7 @@
 
 """Tests for snapshot export."""
 import collections
+import unittest
 
 from ggrc import models, db
 from ggrc.utils import QueryCounter, DATE_FORMAT_US
@@ -74,6 +75,7 @@ class TestExportSnapshots(TestCase):
               multi_choice_options="one,two,three,four,five"),
       ]
 
+  @unittest.skip("Skip until import for controls will be deprecated")
   def test_full_control_export(self):
     """Test exporting of a single full control snapshot."""
     self._create_cads("control")

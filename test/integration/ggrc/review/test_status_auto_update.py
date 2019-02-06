@@ -14,25 +14,6 @@ from integration.ggrc.api_helper import Api
 from integration.ggrc.review import generate_review_object
 
 
-def build_related_object_data(role, title):
-  return {
-      "id": all_models.Option.query.filter_by(role=role, title=title).one().id,
-      "type": "Option"
-  }
-
-
-def get_kind_data():
-  return build_related_object_data("control_kind", "Detective")
-
-
-def get_mean_data():
-  return build_related_object_data("control_means", "Technical")
-
-
-def get_verify_frequency_data():
-  return build_related_object_data("verify_frequency", "Daily")
-
-
 def get_assertions_data():
   return [
       {
