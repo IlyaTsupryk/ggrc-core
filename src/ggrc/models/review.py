@@ -5,6 +5,7 @@
 import datetime
 
 import sqlalchemy as sa
+from sqlalchemy.orm import validates
 
 from ggrc import db
 from ggrc import builder
@@ -13,6 +14,7 @@ from ggrc.access_control import role
 from ggrc.access_control import roleable
 from ggrc.login import get_current_user
 from ggrc.models import mixins, exceptions
+from ggrc.models import inflector
 from ggrc.models import utils as model_utils
 from ggrc.models import reflection
 from ggrc.models.mixins import issue_tracker
@@ -325,3 +327,17 @@ class Review(mixins.person_relation_factory("last_reviewed_by"),
     if self.status == all_models.Review.STATES.REVIEWED:
       self.last_reviewed_by = self.modified_by
       self.last_reviewed_at = datetime.datetime.utcnow()
+
+  # pylint: disable=no-self-use
+  @validates("reviewable_type")
+  def validate_reviewable_type(self, _, reviewable_type):
+    """Validate reviewable_type attribute.
+
+    We preventing creation of reviews for external models.
+    """
+    reviewable_class = inflector.get_model(reviewable_type)
+
+    if issubclass(reviewable_class, synchronizable.Synchronizable):
+      raise ValueError("Trying to create review for external model.")
+
+    return reviewable_type

@@ -4,14 +4,17 @@
 """Defines a Revision model for storing snapshots."""
 
 import sqlalchemy as sa
+from sqlalchemy.orm import validates
 
 from ggrc import db
+from ggrc.models import inflector
 from ggrc.models import mixins
 from ggrc.models import reflection
 from ggrc.models import relationship
 from ggrc.models import types
 from ggrc.models import utils
 from ggrc.models.mixins import base
+from ggrc.models.mixins import synchronizable
 from ggrc.fulltext import mixin as ft_mixin
 from ggrc.utils import referenced_objects
 from ggrc.access_control import roleable
@@ -53,6 +56,7 @@ class FullInstanceContentFased(utils.FasadeProperty):
 
 
 # pylint: enable=too-few-public-methods
+# pylint: enable=no-self-use
 
 
 class Proposal(mixins.person_relation_factory("applied_by"),
@@ -165,6 +169,20 @@ class Proposal(mixins.person_relation_factory("applied_by"),
             db.Index("ix_apply_datetime", "apply_datetime"),
             db.Index("ix_proposed_notified_datetime",
                      "proposed_notified_datetime"))
+
+  # pylint: disable=no-self-use
+  @validates("instance_type")
+  def validate_instance_type(self, _, instance_type):
+    """Validate instance_type attribute.
+
+    We preventing creation of proposals for external models.
+    """
+    instance_class = inflector.get_model(instance_type)
+
+    if issubclass(instance_class, synchronizable.Synchronizable):
+      raise ValueError("Trying to create proposal for external model.")
+
+    return instance_type
 
 
 class Proposalable(object):  # pylint: disable=too-few-public-methods
