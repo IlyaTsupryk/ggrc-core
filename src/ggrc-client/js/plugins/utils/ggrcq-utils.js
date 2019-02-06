@@ -47,8 +47,8 @@ function getUrl({model, path, slug, view}) {
     url += '/';
   }
 
-  model = model.toLowerCase().replace(/ /g, '_');
-  path = path.toLowerCase().replace(/ /g, '_');
+  model = model.toLowerCase();
+  path = path.toLowerCase();
   slug = slug.toLowerCase();
   view = view ? `/${view}` : '';
 
@@ -62,7 +62,7 @@ function getUrl({model, path, slug, view}) {
  */
 function getQuestionsUrl(instance) {
   return getUrl({
-    model: instance.constructor.title_singular,
+    model: instance.constructor.table_singular,
     path: 'questionnaires',
     slug: instance.slug,
   });
@@ -75,8 +75,8 @@ function getQuestionsUrl(instance) {
  */
 function getInfoUrl(instance) {
   return getUrl({
-    model: instance.constructor.title_singular,
-    path: instance.constructor.title_singular,
+    model: instance.constructor.table_singular,
+    path: instance.constructor.table_singular,
     slug: instance.slug,
     view: 'info',
   });
@@ -89,8 +89,8 @@ function getInfoUrl(instance) {
  */
 function getCommentFormUrl(instance) {
   return getUrl({
-    model: instance.constructor.title_singular,
-    path: instance.constructor.title_singular,
+    model: instance.constructor.table_singular,
+    path: instance.constructor.table_singular,
     slug: instance.slug,
     view: 'comment',
   });
