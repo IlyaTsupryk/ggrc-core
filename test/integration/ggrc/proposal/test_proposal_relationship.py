@@ -72,18 +72,17 @@ class TestProposalRelationship(TestCase):
     self.assertEqual(201, response.status_code)
     return response
 
-  @ddt.data("Risk", "Control")
-  def test_create(self, model_name):
-    """Test if relationship between {} and Proposal is created."""
-    obj = factories.get_model_factory(model_name)()
-    self.create_proposal_for(obj)
-    self.assertEqual(1, self.proposal_relationships(obj).count())
+  def test_create(self):
+    """Test if relationship between Risk and Proposal is created."""
+    risk = factories.RiskFactory()
+    self.create_proposal_for(risk)
+    self.assertEqual(1, self.proposal_relationships(risk).count())
 
   def test_create_on_post_only(self):
     """Test if proposal relationship is created on post only."""
-    control = factories.ControlFactory()
-    response = self.create_proposal_for(control)
-    post_rels = self.proposal_relationships(control).all()
+    risk = factories.RiskFactory()
+    response = self.create_proposal_for(risk)
+    post_rels = self.proposal_relationships(risk).all()
 
     proposal = all_models.Proposal.query.get(response.json["proposal"]["id"])
     # Invalidate ACR cache manually as after first post
@@ -99,7 +98,7 @@ class TestProposalRelationship(TestCase):
         }
     )
     self.assert200(response)
-    put_rels = self.proposal_relationships(control).all()
+    put_rels = self.proposal_relationships(risk).all()
     self.assertEqual(post_rels, put_rels)
 
   def test_rel_remove_parent(self):
@@ -115,11 +114,11 @@ class TestProposalRelationship(TestCase):
 
   def test_rel_remove_proposal(self):
     """Test if relationship will be removed if proposal is removed."""
-    control = factories.ControlFactory()
-    response = self.create_proposal_for(control)
-    self.assertEqual(1, self.proposal_relationships(control).count())
+    risk = factories.RiskFactory()
+    response = self.create_proposal_for(risk)
+    self.assertEqual(1, self.proposal_relationships(risk).count())
 
     proposal = all_models.Proposal.query.get(response.json["proposal"]["id"])
     response = self.api.delete(proposal)
     self.assert200(response)
-    self.assertEqual(0, self.proposal_relationships(control).count())
+    self.assertEqual(0, self.proposal_relationships(risk).count())

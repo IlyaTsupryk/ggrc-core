@@ -66,52 +66,18 @@ class TestReviewStatusUpdate(TestCase):
 
     self.generator = generator.ObjectGenerator()
 
-  @ddt.data(
-      ("title", "new title"),
-      ("description", "new description"),
-      ("test_plan", "new test_plan"),
-      ("notes", "new notes"),
-      ("fraud_related", 1),
-      ("key_control", 1),
-      ("start_date", "2020-01-01"),
-      ("status", "Active"),
-      ("kind", get_kind_data),
-      ("means", get_mean_data),
-      ("verify_frequency", get_verify_frequency_data),
-      ("assertions", get_assertions_data),
-      ("categories", get_categories_data),
-  )
-  @ddt.unpack
-  def test_reviewable_attributes(self, attr_to_modify, new_value):
-    """If attribute '{0}' modified move review to Unreviewed state"""
-    with factories.single_commit():
-      control = factories.ControlFactory()
-      review = factories.ReviewFactory(
-          status=all_models.Review.STATES.REVIEWED, reviewable=control
-      )
-    review_id = review.id
-    reviewable = review.reviewable
-
-    self.api.modify_object(
-        reviewable,
-        {attr_to_modify: new_value() if callable(new_value) else new_value}
-    )
-
-    review = all_models.Review.query.get(review_id)
-    self.assertEqual(review.status, all_models.Review.STATES.UNREVIEWED)
-
   def test_gca(self):
     """if GCA of reviewable is changed review -> unreviewed"""
     with factories.single_commit():
       ca_factory = factories.CustomAttributeDefinitionFactory
       gca = ca_factory(
-          definition_type="control",
+          definition_type="risk",
           title="rich_test_gca",
           attribute_type="Rich Text"
       )
-      control = factories.ControlFactory()
+      risk = factories.RiskFactory()
       review = factories.ReviewFactory(
-          status=all_models.Review.STATES.REVIEWED, reviewable=control
+          status=all_models.Review.STATES.REVIEWED, reviewable=risk
       )
     review_id = review.id
     reviewable = review.reviewable
@@ -138,18 +104,18 @@ class TestReviewStatusUpdate(TestCase):
     with factories.single_commit():
       ca_factory = factories.CustomAttributeDefinitionFactory
       gca = ca_factory(
-          definition_type="control",
+          definition_type="risk",
           title="rich_test_gca",
           attribute_type="Rich Text"
       )
-      control = factories.ControlFactory()
+      risk = factories.RiskFactory()
 
-      control.custom_attribute_values = [{
+      risk.custom_attribute_values = [{
           "attribute_value": "starting_value",
           "custom_attribute_id": gca.id
       }]
       review = factories.ReviewFactory(
-          status=all_models.Review.STATES.REVIEWED, reviewable=control
+          status=all_models.Review.STATES.REVIEWED, reviewable=risk
       )
     review_id = review.id
     reviewable = review.reviewable
@@ -177,18 +143,18 @@ class TestReviewStatusUpdate(TestCase):
     with factories.single_commit():
       ca_factory = factories.CustomAttributeDefinitionFactory
       gca = ca_factory(
-          definition_type="control",
+          definition_type="risk",
           title=title,
           attribute_type="Rich Text"
       )
-      control = factories.ControlFactory()
+      risk = factories.RiskFactory()
 
-      control.custom_attribute_values = [{
+      risk.custom_attribute_values = [{
           "attribute_value": "starting_value",
           "custom_attribute_id": gca.id
       }]
       review = factories.ReviewFactory(
-          status=all_models.Review.STATES.REVIEWED, reviewable=control
+          status=all_models.Review.STATES.REVIEWED, reviewable=risk
       )
     review_id = review.id
     reviewable = review.reviewable
@@ -215,7 +181,7 @@ class TestReviewStatusUpdate(TestCase):
     with factories.single_commit():
       ca_factory = factories.CustomAttributeDefinitionFactory
       gca = ca_factory(
-          definition_type="control",
+          definition_type="risk",
           title="map_test_gca",
           attribute_type="Map:Person"
       )
@@ -224,9 +190,9 @@ class TestReviewStatusUpdate(TestCase):
           email="user@example.com"
       ).one().id
 
-      control = factories.ControlFactory()
+      risk = factories.RiskFactory()
       review = factories.ReviewFactory(
-          status=all_models.Review.STATES.REVIEWED, reviewable=control
+          status=all_models.Review.STATES.REVIEWED, reviewable=risk
       )
 
     review_id = review.id
@@ -254,7 +220,7 @@ class TestReviewStatusUpdate(TestCase):
     with factories.single_commit():
       ca_factory = factories.CustomAttributeDefinitionFactory
       gca = ca_factory(
-          definition_type="control",
+          definition_type="risk",
           title="map_test_gca",
           attribute_type="Map:Person"
       )
@@ -264,14 +230,14 @@ class TestReviewStatusUpdate(TestCase):
       ).one().id
       second_user_id = factories.PersonFactory().id
 
-      control = factories.ControlFactory()
-      control.custom_attribute_values = [{
+      risk = factories.RiskFactory()
+      risk.custom_attribute_values = [{
           "attribute_object_id": first_user_id,
           "custom_attribute_id": gca.id,
           "attribute_value": "Person"
       }]
       review = factories.ReviewFactory(
-          status=all_models.Review.STATES.REVIEWED, reviewable=control
+          status=all_models.Review.STATES.REVIEWED, reviewable=risk
       )
 
     review_id = review.id
@@ -299,7 +265,7 @@ class TestReviewStatusUpdate(TestCase):
     with factories.single_commit():
       ca_factory = factories.CustomAttributeDefinitionFactory
       gca = ca_factory(
-          definition_type="control",
+          definition_type="risk",
           title="map_test_gca",
           attribute_type="Map:Person"
       )
@@ -308,14 +274,14 @@ class TestReviewStatusUpdate(TestCase):
           email="user@example.com"
       ).one().id
 
-      control = factories.ControlFactory()
-      control.custom_attribute_values = [{
+      risk = factories.RiskFactory()
+      risk.custom_attribute_values = [{
           "attribute_object_id": user_id,
           "custom_attribute_id": gca.id,
           "attribute_value": "Person"
       }]
       review = factories.ReviewFactory(
-          status=all_models.Review.STATES.REVIEWED, reviewable=control
+          status=all_models.Review.STATES.REVIEWED, reviewable=risk
       )
 
     review_id = review.id
@@ -342,18 +308,18 @@ class TestReviewStatusUpdate(TestCase):
   def test_reference_url(self):
     """If reference url is updated state should not updated"""
     with factories.single_commit():
-      control = factories.ControlFactory()
+      risk = factories.RiskFactory()
       doc = factories.DocumentReferenceUrlFactory(
           title="Simple title",
           link="some_url.com",
           description="mega description",
           parent_obj={
-              "id": control.id,
-              "type": "Control"
+              "id": risk.id,
+              "type": "Risk"
           }
       )
       review = factories.ReviewFactory(
-          status=all_models.Review.STATES.REVIEWED, reviewable=control
+          status=all_models.Review.STATES.REVIEWED, reviewable=risk
       )
     review_id = review.id
 
@@ -364,14 +330,14 @@ class TestReviewStatusUpdate(TestCase):
   def test_acl_roles(self):
     """Update of reviewable ACL shouldn't change review status"""
     with factories.single_commit():
-      control = factories.ControlFactory()
+      risk = factories.RiskFactory()
       review = factories.ReviewFactory(
-          status=all_models.Review.STATES.REVIEWED, reviewable=control
+          status=all_models.Review.STATES.REVIEWED, reviewable=risk
       )
     review_id = review.id
 
     ac_role_id = all_models.AccessControlRole.query.filter_by(
-        name="Control Operators", object_type="Control"
+        name="Admin", object_type="Risk"
     ).one().id
 
     user_id = all_models.Person.query.filter_by(
@@ -379,7 +345,7 @@ class TestReviewStatusUpdate(TestCase):
     ).one().id
 
     self.api.modify_object(
-        control, {
+        risk, {
             "access_control_list":
             [{
                 "ac_role_id": ac_role_id,
@@ -395,14 +361,14 @@ class TestReviewStatusUpdate(TestCase):
   def test_comments(self):
     """Add comment to reviewable shouldn't update review state"""
     with factories.single_commit():
-      control = factories.ControlFactory()
+      risk = factories.RiskFactory()
       review = factories.ReviewFactory(
-          status=all_models.Review.STATES.REVIEWED, reviewable=control
+          status=all_models.Review.STATES.REVIEWED, reviewable=risk
       )
     review_id = review.id
 
     self.generator.generate_comment(
-        control, "Verifiers", "some comment", send_notification="false"
+        risk, "Verifiers", "some comment", send_notification="false"
     )
 
     review = all_models.Review.query.get(review_id)
@@ -411,14 +377,14 @@ class TestReviewStatusUpdate(TestCase):
   def test_mapping_non_snapshotable(self):
     """Map non-snapshotable shouldn't change review status"""
     with factories.single_commit():
-      control = factories.ControlFactory()
+      risk = factories.RiskFactory()
       review = factories.ReviewFactory(
-          status=all_models.Review.STATES.REVIEWED, reviewable=control
+          status=all_models.Review.STATES.REVIEWED, reviewable=risk
       )
       review_id = review.id
 
     factories.RelationshipFactory(
-        source=control, destination=factories.IssueFactory()
+        source=risk, destination=factories.IssueFactory()
     )
 
     review = all_models.Review.query.get(review_id)
@@ -447,14 +413,14 @@ class TestReviewStatusUpdate(TestCase):
   def test_map_snapshotable(self, snapshotable):
     """Map '{}' should change review status"""
     with factories.single_commit():
-      control = factories.ControlFactory()
+      risk = factories.RiskFactory()
       review = factories.ReviewFactory(
-          status=all_models.Review.STATES.REVIEWED, reviewable=control
+          status=all_models.Review.STATES.REVIEWED, reviewable=risk
       )
       review_id = review.id
 
     self.generator.generate_relationship(
-        source=control,
+        source=risk,
         destination=factories.get_model_factory(snapshotable)(),
         context=None,
     )
@@ -466,12 +432,12 @@ class TestReviewStatusUpdate(TestCase):
     """Unmap snapshotable should change review status"""
     self.api.login_as_normal()
 
-    control = factories.ControlFactory()
-    resp, review = generate_review_object(control)
+    risk = factories.RiskFactory()
+    resp, review = generate_review_object(risk)
     review_id = review.id
 
     _, rel = self.generator.generate_relationship(
-        source=control,
+        source=risk,
         destination=factories.ProductFactory(),
         context=None,
     )
@@ -499,9 +465,9 @@ class TestReviewStatusUpdate(TestCase):
   )
   def test_map_nonsnapshotable(self, nonsnapshotable):
     """Map '{}' shouldn't change review status"""
-    control = factories.ControlFactory()
+    risk = factories.RiskFactory()
     _, review = generate_review_object(
-        control, state=all_models.Review.STATES.REVIEWED)
+        risk, state=all_models.Review.STATES.REVIEWED)
     review_id = review.id
 
     review = all_models.Review.query.get(review_id)
@@ -509,7 +475,7 @@ class TestReviewStatusUpdate(TestCase):
     self.assertEqual(review.status, all_models.Review.STATES.REVIEWED)
 
     self.generator.generate_relationship(
-        source=control,
+        source=risk,
         destination=factories.get_model_factory(nonsnapshotable)(),
         context=None,
     )
@@ -521,12 +487,12 @@ class TestReviewStatusUpdate(TestCase):
     """Unmap nonsnapshotable shouldn't change review status"""
     self.api.login_as_normal()
 
-    control = factories.ControlFactory()
+    risk = factories.RiskFactory()
     resp, review = generate_review_object(
-        control, state=all_models.Review.STATES.REVIEWED)
+        risk, state=all_models.Review.STATES.REVIEWED)
     review_id = review.id
     _, rel = self.generator.generate_relationship(
-        source=control,
+        source=risk,
         destination=factories.ProgramFactory(),
         context=None,
     )
@@ -546,8 +512,8 @@ class TestReviewStatusUpdate(TestCase):
 
   def test_proposal_apply(self):
     """Reviewable object changed via proposal -> review.state-> UNREVIEWED"""
-    control = factories.ControlFactory()
-    _, review = generate_review_object(control)
+    risk = factories.RiskFactory()
+    _, review = generate_review_object(risk)
 
     review_id = review.id
 
@@ -557,7 +523,7 @@ class TestReviewStatusUpdate(TestCase):
         },
     }
     proposal = factories.ProposalFactory(
-        instance=control, content=proposal_content, agenda="agenda content"
+        instance=risk, content=proposal_content, agenda="agenda content"
     )
     self.api.modify_object(proposal, {"status": proposal.STATES.APPLIED})
 
@@ -566,11 +532,11 @@ class TestReviewStatusUpdate(TestCase):
 
   def test_review_status_update(self):
     """Test updating folder preserves review status"""
-    control = factories.ControlFactory()
+    risk = factories.RiskFactory()
     factories.ReviewFactory(
-        reviewable=control,
+        reviewable=risk,
         status=all_models.Review.STATES.REVIEWED,
     )
-    self.api.put(control, {"folder": factories.random_str()})
-    control = all_models.Control.query.get(control.id)
-    self.assertEqual(control.review.status, all_models.Review.STATES.REVIEWED)
+    self.api.put(risk, {"folder": factories.random_str()})
+    risk = all_models.Risk.query.get(risk.id)
+    self.assertEqual(risk.review.status, all_models.Review.STATES.REVIEWED)

@@ -350,8 +350,8 @@ class TestRevisions(query_helper.WithQueryApi, TestCase):
 
   def test_revision_review_stub(self):
     """ Test proper review stub population in revision content """
-    control = factories.ControlFactory()
-    revisions = _get_revisions(control)
+    risk = factories.RiskFactory()
+    revisions = _get_revisions(risk)
     self.assertEqual(len(revisions), 1)
     self.assertEqual(revisions[0].action, "created")
 
@@ -360,8 +360,8 @@ class TestRevisions(query_helper.WithQueryApi, TestCase):
         {
             "review": {
                 "reviewable": {
-                    "type": control.type,
-                    "id": control.id,
+                    "type": risk.type,
+                    "id": risk.id,
                 },
                 "context": None,
                 "notification_type": "email",
@@ -376,7 +376,7 @@ class TestRevisions(query_helper.WithQueryApi, TestCase):
     self.assertEqual(all_models.Review.STATES.REVIEWED,
                      resp_review["status"])
 
-    revisions = _get_revisions(control)
+    revisions = _get_revisions(risk)
     self.assertEqual(len(revisions), 2)
     self.assertEqual(revisions[0].action, "created")
     self.assertEqual(revisions[1].action, "modified")

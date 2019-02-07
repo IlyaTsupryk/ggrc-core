@@ -26,11 +26,11 @@ class TestReviewApi(TestCase):
   def test_simple_get(self):
     """Test simple get"""
     with factories.single_commit():
-      control = factories.ControlFactory()
+      risk = factories.RiskFactory()
       review = factories.ReviewFactory(
           email_message="test email message",
           notification_type="email",
-          reviewable=control,
+          reviewable=risk,
           status=all_models.Review.STATES.UNREVIEWED,
       )
     resp = self.api.get(all_models.Review, review.id)
@@ -63,15 +63,15 @@ class TestReviewApi(TestCase):
 
   def test_create_review(self):
     """Create review via API, check that single relationship is created"""
-    control = factories.ControlFactory()
-    control_id = control.id
+    program = factories.ProgramFactory()
+    program_id = program.id
     resp = self.api.post(
         all_models.Review,
         {
             "review": {
                 "reviewable": {
-                    "type": control.type,
-                    "id": control.id,
+                    "type": program.type,
+                    "id": program.id,
                 },
                 "context": None,
                 "notification_type": "email",
@@ -84,20 +84,20 @@ class TestReviewApi(TestCase):
     review_id = resp.json["review"]["id"]
     review = all_models.Review.query.get(review_id)
     self.assertEqual(all_models.Review.STATES.UNREVIEWED, review.status)
-    self.assertEqual(control.type, review.reviewable_type)
-    self.assertEqual(control_id, review.reviewable_id)
+    self.assertEqual(program.type, review.reviewable_type)
+    self.assertEqual(program_id, review.reviewable_id)
 
     control_review_rel_count = all_models.Relationship.query.filter(
         all_models.Relationship.source_id == review.id,
         all_models.Relationship.source_type == review.type,
-        all_models.Relationship.destination_id == control_id,
-        all_models.Relationship.destination_type == control.type,
+        all_models.Relationship.destination_id == program_id,
+        all_models.Relationship.destination_type == program.type,
     ).union(
         all_models.Relationship.query.filter(
             all_models.Relationship.destination_id == review.id,
             all_models.Relationship.destination_type == review.type,
-            all_models.Relationship.source_id == control_id,
-            all_models.Relationship.source_type == control.type,
+            all_models.Relationship.source_id == program_id,
+            all_models.Relationship.source_type == program.type,
         )
     ).count()
     self.assertEqual(1, control_review_rel_count)
@@ -105,27 +105,27 @@ class TestReviewApi(TestCase):
   def test_delete_review(self):
     """Test delete review via API"""
     with factories.single_commit():
-      control = factories.ControlFactory()
-      control_id = control.id
-      review = factories.ReviewFactory(reviewable=control)
+      risk = factories.RiskFactory()
+      risk_id = risk.id
+      review = factories.ReviewFactory(reviewable=risk)
       review_id = review.id
     resp = self.api.delete(review)
     self.assert200(resp)
     review = all_models.Review.query.get(review_id)
-    control = all_models.Control.query.get(control_id)
+    risk = all_models.Risk.query.get(risk_id)
 
     self.assertIsNone(review)
-    self.assertEquals(0, len(control.related_objects(_types=["Review"])))
+    self.assertEquals(0, len(risk.related_objects(_types=["Review"])))
 
   def test_last_reviewed(self):
     """last_reviewed_by, last_reviewed_by should be set if reviewed"""
-    control = factories.ControlFactory()
+    risk = factories.RiskFactory()
     resp, review = self.generator.generate_object(
         all_models.Review,
         {
             "reviewable": {
-                "type": control.type,
-                "id": control.id,
+                "type": risk.type,
+                "id": risk.id,
             },
             "context": None,
             "status": all_models.Review.STATES.UNREVIEWED,

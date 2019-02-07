@@ -63,19 +63,6 @@ class TestControl(TestCase):
     control = db.session.query(all_models.Control).get(control.id)
     self.assertIsNotNone(control.title)
 
-  def test_review_get(self):
-    """Test that review data is present in control get response"""
-    with factories.single_commit():
-      control = factories.ControlFactory()
-      review = factories.ReviewFactory(reviewable=control)
-      review_id = review.id
-
-    resp = self.api.get(all_models.Control, control.id)
-    self.assert200(resp)
-    resp_control = resp.json["control"]
-    self.assertIn("review", resp_control)
-    self.assertEquals(review_id, resp_control["review"]["id"])
-
 
 class TestSyncServiceControl(TestCase):
   """Tests for control model using sync service."""

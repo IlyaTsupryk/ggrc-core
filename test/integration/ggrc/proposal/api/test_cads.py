@@ -18,28 +18,28 @@ class TestCADProposalsApi(base.BaseTestProposalApi):
   def test_change_cad(self):
     """Test create proposal with change CAVs."""
     with factories.single_commit():
-      control = factories.ControlFactory(title="1")
+      risk = factories.RiskFactory(title="1")
       cad = factories.CustomAttributeDefinitionFactory(
-          definition_type="control")
+          definition_type="risk")
       factories.CustomAttributeValueFactory(
           custom_attribute=cad,
-          attributable=control,
+          attributable=risk,
           attribute_value="123")
-    control_id = control.id
+    risk_id = risk.id
     cad_id = cad.id
-    data = control.log_json()
+    data = risk.log_json()
     data["custom_attribute_values"][0]["attribute_value"] = "321"
-    self.create_proposal(control,
+    self.create_proposal(risk,
                          full_instance_content=data,
                          agenda="update cav",
                          context=None)
-    control = all_models.Control.query.get(control_id)
-    self.assertEqual(1, len(control.proposals))
-    self.assertIn("custom_attribute_values", control.proposals[0].content)
+    risk = all_models.Risk.query.get(risk_id)
+    self.assertEqual(1, len(risk.proposals))
+    self.assertIn("custom_attribute_values", risk.proposals[0].content)
     self.assertEqual({unicode(cad_id): {"attribute_value": u"321",
                                         "attribute_object": None}},
-                     control.proposals[0].content["custom_attribute_values"])
-    self.assertEqual(1, len(control.comments))
+                     risk.proposals[0].content["custom_attribute_values"])
+    self.assertEqual(1, len(risk.comments))
 
   @ddt.data(
       ("1", "1", None),
@@ -66,49 +66,49 @@ class TestCADProposalsApi(base.BaseTestProposalApi):
     """Proposal for Checkbox CAVs if start value is {0} and sent is {1}."""
     checkbox_type = all_models.CustomAttributeDefinition.ValidTypes.CHECKBOX
     with factories.single_commit():
-      control = factories.ControlFactory(title="1")
+      risk = factories.RiskFactory(title="1")
       cad = factories.CustomAttributeDefinitionFactory(
-          definition_type="control",
+          definition_type="risk",
           attribute_type=checkbox_type,
       )
       if start_value is not None:
         factories.CustomAttributeValueFactory(
             custom_attribute=cad,
-            attributable=control,
+            attributable=risk,
             attribute_value=start_value)
 
-    control_id = control.id
+    risk_id = risk.id
     cad_id = cad.id
-    data = control.log_json()
+    data = risk.log_json()
     data["custom_attribute_values"] = [{
         "custom_attribute_id": cad_id,
         "attribute_value": sent_value,
         "attribute_object_id": None
     }]
-    self.create_proposal(control,
+    self.create_proposal(risk,
                          full_instance_content=data,
                          agenda="update cav",
                          context=None)
-    control = all_models.Control.query.get(control_id)
-    self.assertEqual(1, len(control.proposals))
-    self.assertIn("custom_attribute_values", control.proposals[0].content)
+    risk = all_models.Risk.query.get(risk_id)
+    self.assertEqual(1, len(risk.proposals))
+    self.assertIn("custom_attribute_values", risk.proposals[0].content)
     if expected_value is None:
-      self.assertFalse(control.proposals[0].content["custom_attribute_values"])
+      self.assertFalse(risk.proposals[0].content["custom_attribute_values"])
     else:
       self.assertEqual({unicode(cad_id): {"attribute_value": expected_value,
                                           "attribute_object": None}},
-                       control.proposals[0].content["custom_attribute_values"])
-    self.assertEqual(1, len(control.comments))
+                       risk.proposals[0].content["custom_attribute_values"])
+    self.assertEqual(1, len(risk.comments))
 
   def test_apply_cad(self):
     """Test apply proposal with change CAVs."""
     with factories.single_commit():
-      control = factories.ControlFactory(title="1")
+      risk = factories.RiskFactory(title="1")
       cad = factories.CustomAttributeDefinitionFactory(
-          definition_type="control")
-    control_id = control.id
+          definition_type="risk")
+    risk_id = risk.id
     proposal = factories.ProposalFactory(
-        instance=control,
+        instance=risk,
         content={
             "custom_attribute_values": {
                 cad.id: {
@@ -118,33 +118,33 @@ class TestCADProposalsApi(base.BaseTestProposalApi):
             },
         },
         agenda="agenda content")
-    with self.number_obj_revisions_for(control):
+    with self.number_obj_revisions_for(risk):
       self.apply_proposal(proposal)
-    control = all_models.Control.query.get(control_id)
+    risk = all_models.Risk.query.get(risk_id)
     self.assertEqual(
         "321",
-        control.custom_attribute_values[0].attribute_value)
+        risk.custom_attribute_values[0].attribute_value)
 
   def test_apply_mapping_cad(self):
     """Test apply mapping CAVs proposal."""
     with factories.single_commit():
-      control = factories.ControlFactory(title="1")
+      risk = factories.RiskFactory(title="1")
       cad = factories.CustomAttributeDefinitionFactory(
-          definition_type="control",
+          definition_type="risk",
           attribute_type="Map:Person"
       )
       person = factories.PersonFactory()
       cav = factories.CustomAttributeValueFactory(
           custom_attribute=cad,
-          attributable=control,
+          attributable=risk,
           attribute_object_id=person.id,
           attribute_value="Person",
       )
     self.assertEqual(person,
-                     control.custom_attribute_values[0].attribute_object)
-    control_id = control.id
+                     risk.custom_attribute_values[0].attribute_object)
+    risk_id = risk.id
     proposal = factories.ProposalFactory(
-        instance=control,
+        instance=risk,
         content={
             "custom_attribute_values": {
                 cad.id: {
@@ -154,9 +154,9 @@ class TestCADProposalsApi(base.BaseTestProposalApi):
             },
         },
         agenda="agenda content")
-    with self.number_obj_revisions_for(control):
+    with self.number_obj_revisions_for(risk):
       self.apply_proposal(proposal)
-    control = all_models.Control.query.get(control_id)
-    cav = control.custom_attribute_values[0]
+    risk = all_models.Risk.query.get(risk_id)
+    cav = risk.custom_attribute_values[0]
     self.assertEqual("Person", cav.attribute_value)
     self.assertIsNone(cav.attribute_object_id)
