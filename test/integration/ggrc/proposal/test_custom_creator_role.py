@@ -25,14 +25,14 @@ class TestOwnerAccess(TestCase, WithQueryApi):
     self.api = Api()
 
   @staticmethod
-  def _get_create_proposal_request(control_id, acr_id, person_id):
+  def _get_create_proposal_request(risk_id, acr_id, person_id):
     """Prepare dict with proposal creation request"""
 
     return {
         "proposal": {
             "instance": {
-                "id": control_id,
-                "type": all_models.Control.__name__,
+                "id": risk_id,
+                "type": all_models.Risk.__name__,
             },
             "full_instance_content": {"title": "new_title"},
             "agenda": "update cav",
@@ -42,7 +42,7 @@ class TestOwnerAccess(TestCase, WithQueryApi):
     }
 
   @staticmethod
-  def _get_query_proposal_request(control_id):
+  def _get_query_proposal_request(risk_id):
     """Prepare dict with proposal creation request"""
 
     return [{
@@ -57,13 +57,13 @@ class TestOwnerAccess(TestCase, WithQueryApi):
                 "left": {
                     "left": "instance_type",
                     "op": {"name": "="},
-                    "right": all_models.Control.__name__,
+                    "right": all_models.Risk.__name__,
                 },
                 "op": {"name": "AND"},
                 "right": {
                     "left": "instance_id",
                     "op": {"name": "="},
-                    "right": control_id,
+                    "right": risk_id,
                 },
             },
         },
@@ -74,21 +74,21 @@ class TestOwnerAccess(TestCase, WithQueryApi):
     role_creator = all_models.Role.query.filter(
         all_models.Role.name == "Creator").one()
 
-    # prepare - create control, assign roles
+    # prepare - create risk, assign roles
     factories.AccessControlRoleFactory(
         name="ACL_Reader",
-        object_type="Control",
+        object_type="Risk",
         update=0
     )
     with factories.single_commit():
-      control = factories.ControlFactory()
+      risk = factories.RiskFactory()
       person = factories.PersonFactory()
       rbac_factories.UserRoleFactory(role=role_creator, person=person)
       factories.AccessControlPersonFactory(
-          ac_list=control.acr_name_acl_map["ACL_Reader"],
+          ac_list=risk.acr_name_acl_map["ACL_Reader"],
           person=person,
       )
-      control_id = control.id
+      risk_id = risk.id
 
     # make query to create proposal
     self.api.set_user(person)
@@ -99,10 +99,10 @@ class TestOwnerAccess(TestCase, WithQueryApi):
                                  acr_class.object_type == 'Proposal').one()
 
     create_data = self._get_create_proposal_request(
-        control_id, acr.id, person.id)
+        risk_id, acr.id, person.id)
     self.api.post(all_models.Proposal, create_data)
 
-    query_data = self._get_query_proposal_request(control_id)
+    query_data = self._get_query_proposal_request(risk_id)
     headers = {"Content-Type": "application/json", }
     resp = self.api.client.post("/query",
                                 data=json.dumps(query_data),
@@ -115,23 +115,23 @@ class TestOwnerAccess(TestCase, WithQueryApi):
     role_creator = all_models.Role.query.filter(
         all_models.Role.name == "Creator").one()
 
-    # prepare - create control, assign roles
+    # prepare - create risk, assign roles
     factories.AccessControlRoleFactory(
         name="ACL_Reader",
-        object_type="Control",
+        object_type="Risk",
         update=0
     )
     with factories.single_commit():
-      control = factories.ControlFactory()
+      risk = factories.RiskFactory()
       person1 = factories.PersonFactory()
       person2 = factories.PersonFactory()
       for person in (person1, person2):
         rbac_factories.UserRoleFactory(role=role_creator, person=person)
         factories.AccessControlPersonFactory(
-            ac_list=control.acr_name_acl_map["ACL_Reader"],
+            ac_list=risk.acr_name_acl_map["ACL_Reader"],
             person=person,
         )
-      control_id = control.id
+      risk_id = risk.id
       person2_id = person2.id
 
     # make query to create proposal by person1
@@ -143,14 +143,14 @@ class TestOwnerAccess(TestCase, WithQueryApi):
                                  acr_class.object_type == 'Proposal').one()
 
     create_data = self._get_create_proposal_request(
-        control_id, acr.id, person1.id)
+        risk_id, acr.id, person1.id)
     self.api.post(all_models.Proposal, create_data)
 
     # login as person2 and make request
     self.api.set_user(all_models.Person.query.get(person2_id))
     self.client.get("/login")
 
-    query_data = self._get_query_proposal_request(control_id)
+    query_data = self._get_query_proposal_request(risk_id)
     headers = {"Content-Type": "application/json", }
     resp = self.api.client.post("/query",
                                 data=json.dumps(query_data),

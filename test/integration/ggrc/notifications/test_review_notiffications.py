@@ -178,18 +178,18 @@ class TestReviewNotification(TestCase):
                                         num_notifications_expected):
     """Change via proposal with ignorable attrs review status not change"""
     with factories.single_commit():
-      control = factories.ControlFactory()
+      risk = factories.RiskFactory()
       review = factories.ReviewFactory(
           status=all_models.Review.STATES.REVIEWED,
-          reviewable=control,
+          reviewable=risk,
           notification_type=notification_type
       )
       review_id = review.id
 
       user = factories.PersonFactory()
       acl = factories.AccessControlListFactory(
-          ac_role=factories.AccessControlRoleFactory(object_type="Control"),
-          object=control
+          ac_role=factories.AccessControlRoleFactory(object_type="Risk"),
+          object=risk
       )
 
       proposal_content = {
@@ -202,7 +202,7 @@ class TestReviewNotification(TestCase):
       }
 
       proposal = factories.ProposalFactory(
-          instance=control,
+          instance=risk,
           content=proposal_content,
           agenda="agenda content"
       )
@@ -280,14 +280,14 @@ class TestReviewNotification(TestCase):
         name="Reviewer",
         object_type="Review",
     ).one().id
-    control = factories.ControlFactory()
+    program = factories.ProgramFactory()
     email_message = "email email_message"
     self.generator.generate_object(
         all_models.Review,
         {
             "reviewable": {
-                "type": control.type,
-                "id": control.id,
+                "type": program.type,
+                "id": program.id,
             },
             "context":
             None,
@@ -393,17 +393,17 @@ class TestReviewNotification(TestCase):
     ).one().id
 
     with factories.single_commit():
-      control_admin = factories.PersonFactory()
-      control = factories.ControlFactory()
-      control.add_person_with_role_name(control_admin, "Admin")
+      risk_admin = factories.PersonFactory()
+      risk = factories.RiskFactory()
+      risk.add_person_with_role_name(risk_admin, "Admin")
 
     email_message = "email email_message"
     _, review = self.generator.generate_object(
         all_models.Review,
         {
             "reviewable": {
-                "type": control.type,
-                "id": control.id,
+                "type": risk.type,
+                "id": risk.id,
             },
             "context": None,
             "notification_type":

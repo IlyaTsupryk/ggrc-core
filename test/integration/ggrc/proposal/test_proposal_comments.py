@@ -34,27 +34,25 @@ class TestCommentsForProposals(TestCase):
   @ddt.unpack
   def test_create(self, agenda, comment):
     """Test case create proposal with agenda {agenda}."""
-    control = factories.ControlFactory(title="1")
-    new_title = "2"
-    control_id = control.id
-    control.title = new_title
-    self.assertEqual(0, len(control.comments))
+    risk = factories.RiskFactory()
+    risk_id = risk.id
+    self.assertEqual(0, len(risk.comments))
     resp = self.api.post(
         all_models.Proposal,
         {"proposal": {
             "instance": {
-                "id": control.id,
-                "type": control.type,
+                "id": risk.id,
+                "type": risk.type,
             },
             # "content": {"123": 123},
-            "full_instance_content": control.log_json(),
+            "full_instance_content": risk.log_json(),
             "agenda": agenda,
             "context": None,
         }})
     self.assertEqual(201, resp.status_code)
-    control = all_models.Control.query.get(control_id)
-    self.assertEqual(1, len(control.comments))
-    self.assertEqual(comment, control.comments[0].description)
+    risk = all_models.Risk.query.get(risk_id)
+    self.assertEqual(1, len(risk.comments))
+    self.assertEqual(comment, risk.comments[0].description)
 
   @ddt.data({"agenda": "",
              "comment_agenda": "",
@@ -97,15 +95,15 @@ class TestCommentsForProposals(TestCase):
     """Test comment proposal status move to {status} with agenda {agenda}."""
     test_email = "foo@example.com"
     with factories.single_commit():
-      control = factories.ControlFactory()
+      risk = factories.RiskFactory()
       proposer = factories.PersonFactory(email=test_email)
     with factories.single_commit():
       proposal = factories.ProposalFactory(
-          instance=control,
+          instance=risk,
           content={"field": "a"},
           agenda="agenda content",
           proposed_by=proposer)
-    control_id = control.id
+    risk_id = risk.id
     if status == all_models.Proposal.STATES.APPLIED:
       resp = self.api.put(
           proposal, {"proposal": {"status": status, "apply_reason": agenda}})
@@ -113,7 +111,7 @@ class TestCommentsForProposals(TestCase):
       resp = self.api.put(
           proposal, {"proposal": {"status": status, "decline_reason": agenda}})
     self.assertEqual(200, resp.status_code)
-    control = all_models.Control.query.get(control_id)
-    self.assertEqual(1, len(control.comments))
+    risk = all_models.Risk.query.get(risk_id)
+    self.assertEqual(1, len(risk.comments))
     comment = tmpl.format(user=test_email, text=comment_agenda)
-    self.assertEqual(comment, control.comments[0].description)
+    self.assertEqual(comment, risk.comments[0].description)

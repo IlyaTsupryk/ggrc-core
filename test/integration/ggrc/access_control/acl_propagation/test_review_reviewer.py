@@ -47,16 +47,6 @@ class TestReviewersPropagation(base.TestACLPropagation):
               "read_document_comment": True,
               "create_and_map_document_comment": False,
           },
-          "MappedReview Control": {
-              "read_parent": True,
-              "read_document": True,
-              "update_document": False,
-              "delete_document": False,
-              "read_comment": True,
-              "create_and_map_comment": False,
-              "read_document_comment": True,
-              "create_and_map_document_comment": False,
-          },
           "MappedReview Contract": {
               "read_parent": True,
               "read_document": True,

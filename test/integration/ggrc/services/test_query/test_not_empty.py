@@ -95,7 +95,7 @@ class TestNotEmptyRevisions(test_ggrc.TestCase, query_helper.WithQueryApi):
 
   def test_review_status(self):
     """Test not_empty_revisions works correcly with review status change."""
-    instance = factories.ControlFactory()
+    instance = factories.ProgramFactory()
 
     def mark_as_reviewed(instance):
       """Helper function to mark `instance` as reviewed."""

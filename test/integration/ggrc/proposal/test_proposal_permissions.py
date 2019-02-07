@@ -26,27 +26,27 @@ class TestPermissions(TestCase):
     roles = {r.name: r for r in all_models.Role.query.all()}
     factories.AccessControlRoleFactory(
         name="ACL_Reader",
-        object_type="Control",
+        object_type="Risk",
         update=0
     )
     factories.AccessControlRoleFactory(
         name="ACL_Editor",
-        object_type="Control"
+        object_type="Risk"
     )
     factories.AccessControlRoleFactory(
         name="ACL_Nobody",
-        object_type="Control",
+        object_type="Risk",
         read=0,
         update=0,
         delete=0,
     )
     with factories.single_commit():
-      self.control = factories.ControlFactory()
+      self.risk = factories.RiskFactory()
       self.program = factories.ProgramFactory()
       self.program.context.related_object = self.program
       self.relationship = factories.RelationshipFactory(
           source=self.program,
-          destination=self.control,
+          destination=self.risk,
           context=self.program.context,
       )
       self.people = {
@@ -74,7 +74,7 @@ class TestPermissions(TestCase):
             person=person,
         )
       self.proposal = factories.ProposalFactory(
-          instance=self.control,
+          instance=self.risk,
           content={
               "access_control_list": {},
               "custom_attribute_values": {},
@@ -84,7 +84,7 @@ class TestPermissions(TestCase):
           }
       )
       factories.RelationshipFactory(
-          source=self.control,
+          source=self.risk,
           destination=self.proposal,
       )
 
@@ -92,7 +92,7 @@ class TestPermissions(TestCase):
         person = self.people[role_name]
         rbac_factories.UserRoleFactory(role=roles["Creator"], person=person)
         factories.AccessControlPersonFactory(
-            ac_list=self.control.acr_name_acl_map[role_name],
+            ac_list=self.risk.acr_name_acl_map[role_name],
             person=person,
         )
 
@@ -183,8 +183,8 @@ class TestPermissions(TestCase):
     data = {
         "proposal": {
             "instance": {
-                "id": self.control.id,
-                "type": self.control.type,
+                "id": self.risk.id,
+                "type": self.risk.type,
             },
             "full_instance_content": {"title": "new_title"},
             "agenda": "update cav",
@@ -221,7 +221,7 @@ class TestPermissions(TestCase):
         expected_count: int, number of proposals,
                         that should be filtered by query
     """
-    control_id = self.control.id
+    risk_id = self.risk.id
     data = [{
         "limit": [0, 5],
         "object_name": all_models.Proposal.__name__,
@@ -234,13 +234,13 @@ class TestPermissions(TestCase):
                 "left": {
                     "left": "instance_type",
                     "op": {"name": "="},
-                    "right": self.control.type,
+                    "right": self.risk.type,
                 },
                 "op": {"name": "AND"},
                 "right": {
                     "left": "instance_id",
                     "op": {"name": "="},
-                    "right": control_id,
+                    "right": risk_id,
                 },
             },
         },
