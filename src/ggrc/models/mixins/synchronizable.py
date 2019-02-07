@@ -8,6 +8,8 @@ from datetime import datetime
 from sqlalchemy.orm import validates
 
 from ggrc import db
+from ggrc.models import reflection
+from ggrc.models.exceptions import ValidationError
 
 
 class ChangesSynchronized(object):  # pylint: disable=too-few-public-methods
@@ -32,7 +34,7 @@ class AttributesSynchronized(object):  # pylint: disable=too-few-public-methods
   _sync_attrs = {
       'id',
       'created_at',
-      'updated_at'
+      'updated_at',
   }
 
   def get_sync_attrs(self):
@@ -43,3 +45,23 @@ class AttributesSynchronized(object):  # pylint: disable=too-few-public-methods
 class Synchronizable(ChangesSynchronized,
                      AttributesSynchronized):
   """Mixin that identifies models that will be used by SyncService."""
+
+  external_id = db.Column(db.Integer, nullable=True, unique=True)
+
+  _api_attrs = reflection.ApiAttributes(
+      'external_id',
+  )
+
+  @staticmethod
+  def _extra_table_args(_):
+    return (
+        db.UniqueConstraint('external_id', name='uq_external_id'),
+    )
+
+  @validates('external_id')
+  def validate_external_id(self, _, value):  # pylint: disable=no-self-use
+    """Add explicit non-nullable validation."""
+    if value is None:
+      raise ValidationError("External ID for the object is not specified")
+
+    return value
