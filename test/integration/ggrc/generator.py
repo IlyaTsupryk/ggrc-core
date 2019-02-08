@@ -12,6 +12,7 @@ import names
 from ggrc import db
 from ggrc import models
 from ggrc.app import app
+from ggrc.models.mixins.synchronizable import Synchronizable
 from ggrc.services import common
 from ggrc_basic_permissions import models as permissions_models
 from integration.ggrc import api_helper
@@ -129,6 +130,14 @@ class ObjectGenerator(Generator):
         "type": obj.type,
     }
 
+  @staticmethod
+  def _get_synchronizable_obj_dict():
+    """Return dict with fileds which extend Synchronizable object"""
+
+    return {
+        'external_id': factories.SynchronizableExternalId.next()
+    }
+
   @_singledispatchmethod
   def generate_object(self, obj_class, data=None, add_fields=True,
                       with_background_tasks=False):
@@ -161,6 +170,9 @@ class ObjectGenerator(Generator):
           "owners": [self.create_stub(models.Person.query.first())],
           "title": factories.random_str(),
       })
+      if issubclass(obj_class, Synchronizable):
+        obj_dict[obj_name].update(self._get_synchronizable_obj_dict())
+
     obj_dict[obj_name].update(data[obj_name] if obj_name in data else data)
     return self.generate(obj_class, obj_name=obj_name, data=obj_dict,
                          with_background_tasks=with_background_tasks)
@@ -188,6 +200,10 @@ class ObjectGenerator(Generator):
     }
 
     obj_dict[obj_name].update(defaults[obj_name])
+
+    if issubclass(obj_class, Synchronizable):
+      obj_dict[obj_name].update(self._get_synchronizable_obj_dict())
+
     obj_dict[obj_name].update(data[obj_name] if obj_name in data else data)
     return self.generate(models.Control, obj_name=obj_name, data=obj_dict,
                          with_background_tasks=with_background_tasks)

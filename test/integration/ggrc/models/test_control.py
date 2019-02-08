@@ -143,6 +143,7 @@ class TestSyncServiceControl(TestCase):
         "created_at": created_at,
         "updated_at": updated_at,
         "slug": "CONTROL-01",
+        "external_id": factories.SynchronizableExternalId.next(),
         "categories": [
             {
                 "id": category.id,
@@ -198,6 +199,7 @@ class TestSyncServiceControl(TestCase):
             "context": None,
             "recipients": "Admin,Control Operators,Control Owners",
             "send_by_default": 0,
+            "external_id": factories.SynchronizableExternalId.next(),
             "assertions": []
         }
     })
@@ -217,6 +219,7 @@ class TestSyncServiceControl(TestCase):
             "context": None,
             "recipients": "Admin,Control Operators,Control Owners",
             "send_by_default": 0,
+            "external_id": factories.SynchronizableExternalId.next(),
             "assertions": [{
                 "id": assertion.id
             }]
@@ -261,6 +264,7 @@ class TestSyncServiceControl(TestCase):
             "context": None,
             "recipients": recipients,
             "send_by_default": send_by_default,
+            "external_id": factories.SynchronizableExternalId.next(),
             "assertions": [{
                 "id": assertion.id
             }]
@@ -287,3 +291,53 @@ class TestSyncServiceControl(TestCase):
     control = db.session.query(all_models.Control).get(control.id)
     self.assertEqual(control.recipients, recipients)
     self.assertEqual(control.send_by_default, send_by_default)
+
+  def test_create_without_external_id(self):
+    """Check control creation without external_id"""
+
+    request = self.prepare_control_request_body()
+    del request['external_id']
+    response = self.api.post(all_models.Control, request)
+
+    self.assert400(response)
+
+  # pylint: disable=invalid-name
+  def test_create_with_empty_external_id(self):
+    """Check control creation with empty external_id"""
+
+    request = self.prepare_control_request_body()
+    request['external_id'] = None
+    response = self.api.post(all_models.Control, request)
+
+    self.assert400(response)
+
+  def test_create_unique_external_id(self):
+    """Check control creation with non-unique external_id"""
+
+    request1 = self.prepare_control_request_body()
+    response1 = self.api.post(all_models.Control, {'control': request1})
+    prev_external_id = response1.json['control']['external_id']
+
+    request2 = self.prepare_control_request_body()
+    request2['external_id'] = prev_external_id
+    response2 = self.api.post(all_models.Control, {'control': request2})
+
+    self.assert400(response2)
+
+  def test_update_external_id_to_null(self):
+    """Test external_id is not set to None"""
+    control = factories.ControlFactory()
+    response = self.api.put(control, {"external_id": None})
+    self.assert400(response)
+
+    control = db.session.query(all_models.Control).get(control.id)
+    self.assertIsNotNone(control.external_id)
+
+  def test_update_external_id(self):
+    """Test external_id is updated"""
+    control = factories.ControlFactory()
+    new_value = factories.SynchronizableExternalId.next()
+    self.api.put(control, {"external_id": new_value})
+
+    control = db.session.query(all_models.Control).get(control.id)
+    self.assertEquals(control.external_id, new_value)

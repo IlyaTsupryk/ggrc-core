@@ -105,6 +105,7 @@ class TestExternalPermissions(TestCase):
     if model_plural == "controls":
       assertion = factories.ControlAssertionFactory()
       model_data["assertions"] = [{"id": assertion.id}]
+      model_data["external_id"] = factories.SynchronizableExternalId.next()
 
     response = self._post(
         "api/{}".format(model_plural),
