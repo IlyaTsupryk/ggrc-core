@@ -12,6 +12,7 @@ use the object generator in the ggrc.generator module.
 # pylint: disable=too-few-public-methods,missing-docstring,old-style-class
 # pylint: disable=no-init
 
+import sys
 import random
 import string
 from contextlib import contextmanager
@@ -43,6 +44,15 @@ def single_commit():
     db.session.commit()
   finally:
     db.session.single_commit = True
+
+
+class SynchronizableExternalId:
+
+  _value_iterator = iter(xrange(sys.maxint))
+
+  @classmethod
+  def next(cls):
+    return next(cls._value_iterator)
 
 
 class TitledFactory(ModelFactory):
@@ -128,6 +138,8 @@ class ControlFactory(TitledFactory):
   assertions = factory.LazyAttribute(lambda m: [ControlAssertionFactory(), ])
   directive = factory.LazyAttribute(lambda m: RegulationFactory())
   recipients = ""
+  external_id = factory.LazyAttribute(lambda m:
+                                      SynchronizableExternalId.next())
 
 
 class IssueFactory(TitledFactory):

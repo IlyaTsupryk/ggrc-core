@@ -66,7 +66,8 @@ class TestAccessControlList(TestCase):
             ],
             "assertions": [{
                 "id": assertion_id
-            }]
+            }],
+            "external_id": factories.SynchronizableExternalId.next(),
         },
     }
     with self.api.as_external():
