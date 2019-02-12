@@ -5,11 +5,10 @@
 
 from datetime import datetime
 
-from sqlalchemy import orm
 from sqlalchemy.orm import validates
 from werkzeug import exceptions
 
-from ggrc import db, login
+from ggrc import db
 from ggrc.access_control import roleable, role
 from ggrc.models import reflection
 from ggrc.models.exceptions import ValidationError

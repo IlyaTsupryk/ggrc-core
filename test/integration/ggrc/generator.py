@@ -37,6 +37,7 @@ class Generator(object):
 
   @staticmethod
   def get_header():
+    """Get base GGRC headers."""
     return {
         "Content-Type": "application/json",
         "X-Requested-By": "GGRC",
@@ -123,6 +124,7 @@ class ObjectGenerator(Generator):
 
   @staticmethod
   def create_stub(obj):
+    """Create object stub (dict with id and type information)."""
     # pylint: disable=protected-access
     return {
         "id": obj.id,

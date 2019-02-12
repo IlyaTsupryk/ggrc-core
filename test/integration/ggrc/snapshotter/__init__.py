@@ -38,6 +38,7 @@ class SnapshotterBaseTestCase(TestCase):
     self.api = api_helper.Api()
 
   def create_object(self, cls, data):
+    """Generate object with provided data."""
     if issubclass(cls, Synchronizable):
       with self.objgen.api.as_external():
         _, obj = self.objgen.generate_object(cls, data)

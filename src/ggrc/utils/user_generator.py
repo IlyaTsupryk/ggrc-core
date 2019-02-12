@@ -113,11 +113,11 @@ def create_users_with_role(email_names, role_name="Creator"):
   db.session.execute(
       ur_inserter.values([
           {
-            "modified_by_id": current_user.id,
-            "created_at": now,
-            "updated_at": now,
-            "role_id": role_id,
-            "person_id": person.id,
+              "modified_by_id": current_user.id,
+              "created_at": now,
+              "updated_at": now,
+              "role_id": role_id,
+              "person_id": person.id,
           }
           for person in created_people
       ])
@@ -266,6 +266,7 @@ def find_users(emails):
   If Integration Server is specified not found in DB user is generated
   with Creator role.
   """
+  # pylint: disable=too-many-locals
   if not settings.INTEGRATION_SERVICE_URL:
     return Person.query.filter(Person.email.in_(emails)).options(
         orm.undefer_group('Person_complete')).all()
