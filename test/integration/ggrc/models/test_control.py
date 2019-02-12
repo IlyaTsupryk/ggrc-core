@@ -13,7 +13,8 @@ from sqlalchemy.orm import collections
 
 from ggrc import db, settings
 from ggrc.models import all_models
-from integration.ggrc import TestCase
+from ggrc.models.mixins import synchronizable
+from integration.ggrc import TestCase, generator
 from integration.ggrc.models import factories
 from integration.ggrc import api_helper
 
@@ -76,6 +77,7 @@ class TestSyncServiceControl(TestCase):
     """setUp, nothing else to add."""
     super(TestSyncServiceControl, self).setUp()
     self.api = api_helper.Api()
+    self.generator = generator.ObjectGenerator()
 
     self.app_user_email = "external_app@example.com"
     self.ext_user_email = 'external@example.com'
@@ -493,3 +495,69 @@ class TestSyncServiceControl(TestCase):
     revisions = response.json["revisions_collection"]["revisions"]
     self.assertEqual(len(revisions), 1)
     self.assertEqual(revisions[0].get("content", {}).get(field), field_value)
+
+  @staticmethod
+  def setup_people(access_control_list):
+    """Create Person objects specified in access_control_list."""
+    all_users = set()
+    for users in access_control_list.values():
+      all_users.update({(user["email"], user["name"]) for user in users})
+
+    with factories.single_commit():
+      for email, name in all_users:
+        factories.PersonFactory(email=email, name=name)
+
+  def assert_obj_acl(self, obj, access_control_list):
+    """Validate correctness of object access_control_list.
+
+    Args:
+        obj: Object for which acl should be checked.
+        access_control_list: Dict of format
+          {<role name>:[{"name": <user name>, "email": <user email>}.
+    """
+    actual_acl = {
+        (a.acl_item.ac_role.name, a.person.email)
+        for a in obj.access_control_list
+    }
+    expected_acl = {
+        (role, person["email"])
+        for role, people in access_control_list.items()
+        for person in people
+    }
+    self.assertEqual(actual_acl, expected_acl)
+
+  @mock.patch("ggrc.settings.INTEGRATION_SERVICE_URL", "mock")
+  @ddt.data(
+      {
+          "Admin": {
+              "email": "user1@example.com",
+              "name": "user1",
+          },
+      },
+      {
+          "Admin": "user1@example.com",
+      },
+  )
+  def test_invalid_acl_format(self, access_control_list):
+    """Test creation of new object with acl in invalid format."""
+    assertion = factories.ControlAssertionFactory()
+
+    response = self.api.post(all_models.Control, {
+        "control": {
+            "id": 123,
+            "external_id": factories.SynchronizableExternalId.next(),
+            "title": "new_control",
+            "context": None,
+            "access_control_list": access_control_list,
+            "assertions": [
+                {
+                    "id": assertion.id
+                },
+            ]
+        }
+    })
+    self.assert400(response)
+    expected_err = synchronizable.RoleableSynchronizable.INVALID_ACL_ERROR
+    self.assertEqual(response.json, expected_err)
+    control = all_models.Control.query.filter_by(id=123)
+    self.assertEqual(control.count(), 0)
