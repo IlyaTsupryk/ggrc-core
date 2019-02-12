@@ -12,11 +12,10 @@ from ggrc import login
 from ggrc.models.comment import Commentable
 from ggrc.models.mixins.with_similarity_score import WithSimilarityScore
 from ggrc.models.object_document import PublicDocumentable
-from ggrc.access_control.roleable import Roleable
 from ggrc.models.categorization import Categorizable
 from ggrc.models.category import CategoryBase
 from ggrc.models.mixins import base
-from ggrc.models.mixins.synchronizable import Synchronizable
+from ggrc.models.mixins import synchronizable
 from ggrc.models import mixins, review
 from ggrc.models.mixins.with_last_assessment_date import WithLastAssessmentDate
 from ggrc.models.deferred import deferred
@@ -226,10 +225,10 @@ class AssertionCategorized(Categorizable):
     )
 
 
-class Control(Synchronizable,
+class Control(synchronizable.Synchronizable,
               WithLastAssessmentDate,
               review.Reviewable,
-              Roleable,
+              synchronizable.RoleableSynchronizable,
               Relatable,
               mixins.CustomAttributable,
               Personable,

@@ -5,9 +5,12 @@
 
 from datetime import datetime
 
+from sqlalchemy import orm
 from sqlalchemy.orm import validates
+from werkzeug import exceptions
 
-from ggrc import db
+from ggrc import db, login
+from ggrc.access_control import roleable, role
 from ggrc.models import reflection
 from ggrc.models.exceptions import ValidationError
 
@@ -65,3 +68,88 @@ class Synchronizable(ChangesSynchronized,
       raise ValidationError("External ID for the object is not specified")
 
     return value
+
+
+class RoleableSynchronizable(roleable.Roleable):
+  """Overrided Roleable mixin for Synchronizable models.
+
+  It replace access_control_list setter to allow set ACL data in sync
+  service format.
+  """
+  INVALID_ACL_ERROR = "Provided access_control_list data isn't valid."
+
+  @roleable.Roleable.access_control_list.setter
+  def access_control_list(self, values):
+    """Setter function for access control list.
+
+    Args:
+        values: List of access control roles or dicts containing json
+          representation of custom attribute values.
+    """
+    # pylint: disable=not-an-iterable
+    if isinstance(values, dict):
+      self.validate_acl_data(values)
+      email_names = self.parse_sync_service_acl(values)
+      from ggrc.utils import user_generator as ug
+      existing_people = {
+          p.email: p for p in ug.load_people_with_emails(email_names)
+      }
+
+      absent_emails = set(email_names) - set(existing_people)
+      absent_users = {email: email_names[email] for email in absent_emails}
+      new_people = {
+          p.email: p for p in ug.create_users_with_role(absent_users)
+      }
+      all_acl_people = dict(existing_people, **new_people)
+
+      for acl in self._access_control_list:
+        users = values.get(acl.ac_role.name, [])
+        people = {all_acl_people[user["email"]] for user in users}
+        acl.update_people(people)
+    else:
+      roleable.Roleable.access_control_list.fset(self, values)
+
+  @staticmethod
+  def is_sync_service_data(values):
+    """Check if received data is in sync service format.
+
+    It should be {<role name>:[{"name": <user name>, "email": <user email>}]}
+    """
+    if not isinstance(values, dict):
+      return False
+
+    for acr, users in values.items():
+      if not isinstance(acr, (str, unicode)) or not isinstance(users, list):
+        return False
+
+    return True
+
+  @staticmethod
+  def parse_sync_service_acl(values):
+    """Parse input data and convert it into {<user email>:<user name>} dict.
+
+    Args:
+        values(dict): Request data in format
+          {<role name>:[{"name": <user name>, "email": <user email>}]}.
+
+    Returns:
+        {<user email>:<user name>} dict.
+    """
+    email_names = {}
+    for users in values.values():
+      for user in users:
+        email_names[user.get("email")] = user.get("name")
+    return email_names
+
+  def validate_acl_data(self, acl_request_data):
+    """Check correctness of ACL data."""
+    if not isinstance(acl_request_data, dict):
+      raise exceptions.BadRequest(self.INVALID_ACL_ERROR)
+
+    if acl_request_data:
+      obj_roles = role.get_ac_roles_data_for(self.type)
+      for acr, users in acl_request_data.items():
+        if not isinstance(acr, (str, unicode)) or not isinstance(users, list):
+          raise exceptions.BadRequest(self.INVALID_ACL_ERROR)
+        if acr not in obj_roles:
+          raise exceptions.BadRequest("Role '{}' does not exist".format(acr))
