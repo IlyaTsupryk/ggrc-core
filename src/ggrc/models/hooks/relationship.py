@@ -14,9 +14,8 @@ from ggrc import db
 from ggrc.models.hooks import assessment
 from ggrc.services import signals
 from ggrc.models import all_models
-from ggrc.models.comment import Commentable
+from ggrc.models.comment import Commentable, ExternalCommentable
 from ggrc.models.mixins.base import ChangeTracked
-from ggrc.models.mixins.synchronizable import Synchronizable
 from ggrc.models import exceptions
 
 
@@ -318,14 +317,15 @@ def init_hook():  # noqa
     """Update Commentable.updated_at when Comment mapped."""
     # pylint: disable=unused-argument
     for obj in objects:
-      if obj.source_type != u"Comment" and obj.destination_type != u"Comment":
+      if obj.source_type not in ("Comment", "ExternalComment") and \
+         obj.destination_type not in ("Comment", "ExternalComment"):
         continue
 
       comment, other = obj.source, obj.destination
-      if comment.type != u"Comment":
+      if comment.type not in ("Comment", "ExternalComment"):
         comment, other = other, comment
 
-      if isinstance(other, (Commentable, ChangeTracked)):
+      if isinstance(other, (Commentable, ExternalCommentable, ChangeTracked)):
         other.updated_at = datetime.utcnow()
 
   sa.event.listen(sa.orm.session.Session, "before_flush",
@@ -363,26 +363,3 @@ def init_hook():  # noqa
     """Handle assessment test plan"""
     # pylint: disable=unused-argument
     copy_snapshot_test_plan(objects)
-
-  @signals.Restful.collection_posted.connect_via(all_models.Relationship)
-  def handle_comment_external_model(_, objects=None, sources=None, **kwargs):
-    """Handle comment mapping to external model.
-
-    We want to prevent creation of notifications for external models.
-    Currently our system creates notifications for comments during Comment
-    creation. However on that step set we cannot check if commented model is
-    external model, because we map comment and model using second request by
-    creating relationship.
-    So to remove sending of notification for comments on external models,
-    we handle relationship creation and check if it maps comment and external
-    model.
-    """
-    del sources, kwargs
-
-    for obj in objects:
-      if all((isinstance(obj.source, Synchronizable),
-              isinstance(obj.destination, all_models.Comment))):
-        delete_comment_notification(obj.destination)
-      elif all((isinstance(obj.destination, Synchronizable),
-                isinstance(obj.source, all_models.Comment))):
-        delete_comment_notification(obj.source)

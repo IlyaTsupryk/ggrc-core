@@ -43,7 +43,8 @@ def _get_log_revisions(current_user_id, obj=None, force_obj=False):
                            if o.type == "Relationship")
   for rel in relationships_changes:
     documentable = rel.get_related_for("Document")
-    if documentable and documentable.type != "Comment":
+    if documentable and \
+       documentable.type not in ("Comment", "ExternalComment"):
       document = rel.get_related_for(documentable.type)
       if rel in new_objects and document not in documentable.documents:
         documentable.documents.append(document)
