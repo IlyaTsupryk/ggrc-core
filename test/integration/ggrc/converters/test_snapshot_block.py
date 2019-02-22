@@ -95,8 +95,6 @@ class TestSnapshotBlockConverter(TestCase):
         ('kind', 'Kind/Nature'),
         ('means', 'Type/Means'),
         ('verify_frequency', 'Frequency'),
-        ('recipients', 'Recipients'),
-        ('send_by_default', 'Send by default'),
         ('documents_file', 'Document File'),
         ('documents_reference_url', 'Reference URL'),
         ('updated_at', 'Last Updated Date'),
@@ -113,7 +111,6 @@ class TestSnapshotBlockConverter(TestCase):
     )
     # last_assessment_date and comments should be in the end
     # according to current order
-    expected_attrs.append(('comments', 'Comments'))
     expected_attrs.append(('last_assessment_date', 'Last Assessment Date'))
 
     self.assertEqual(

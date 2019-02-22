@@ -137,7 +137,6 @@ class ControlFactory(TitledFactory):
 
   assertions = factory.LazyAttribute(lambda _: '["{}"]'.format(random_str()))
   directive = factory.LazyAttribute(lambda m: RegulationFactory())
-  recipients = ""
   external_id = factory.LazyAttribute(lambda m:
                                       SynchronizableExternalId.next())
   external_slug = factory.LazyAttribute(lambda m: random_str())
@@ -272,6 +271,12 @@ class CommentFactory(ModelFactory):
 
   class Meta:
     model = all_models.Comment
+
+
+class ExternalCommentFactory(ModelFactory):
+
+  class Meta:
+    model = all_models.ExternalComment
 
 
 class DocumentFactory(ModelFactory):
@@ -607,6 +612,8 @@ def get_model_factory(model_name):
       "AssessmentTemplate": AssessmentTemplateFactory,
       "Audit": AuditFactory,
       "CalendarEvent": CalendarEventFactory,
+      "Comment": CommentFactory,
+      "ExternalComment": ExternalCommentFactory,
       "Contract": ContractFactory,
       "Control": ControlFactory,
       "Cycle": wf_factories.CycleFactory,

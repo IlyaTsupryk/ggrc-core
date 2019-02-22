@@ -111,9 +111,6 @@ class TestExportSnapshots(TestCase):
             "Assessment Procedure": control.test_plan,
             "Title": control.title,
             "Type/Means": control.means,
-            "Recipients": control.recipients,
-            "Send by default": u"yes",
-            "Comments": u"",
             # Custom attributes
             "RT": self._get_cav(control, "RT"),
             "checkbox": self._get_cav(control, "checkbox"),
@@ -239,9 +236,6 @@ class TestExportSnapshots(TestCase):
             "Archived": u"yes" if audit.archived else u"no",
             # Computed attributes
             "Last Assessment Date": u"",
-            "Recipients": "",
-            "Send by default": u"yes",
-            "Comments": "",
 
             # Custom attributes
             "RT": u"",
@@ -440,9 +434,6 @@ class TestExportSnapshots(TestCase):
           "Notes": u"",
           "Reference URL": u"",
           "Review Status": u"some status",
-          "Recipients": u"",
-          "Send by default": u"yes",
-          "Comments": "",
           "Significance": u"",
           "State": u"Draft",
           "Last Assessment Date": u"",

@@ -335,16 +335,13 @@ class TestSyncServiceControl(TestCase):
     control = db.session.query(all_models.Control).get(control.id)
     self.assertIsNotNone(control.end_date)
 
-  def test_create_commentable(self):
-    """Test if commentable fields are set on creation"""
-    recipients = "Admin,Control Operators,Control Owners"
-    send_by_default = 0
+  def test_create_comments(self):
+    """Test external comments creation for control."""
     response = self.api.post(all_models.Control, {
         "control": {
+            "id": 123,
             "title": "Control title",
             "context": None,
-            "recipients": recipients,
-            "send_by_default": send_by_default,
             "external_id": factories.SynchronizableExternalId.next(),
             "external_slug": factories.random_str(),
             "assertions": '["test assertion"]',
@@ -353,26 +350,102 @@ class TestSyncServiceControl(TestCase):
         },
     })
     self.assertEqual(response.status_code, 201)
-    control_id = response.json.get("control").get("id")
-    control = db.session.query(all_models.Control).get(control_id)
-    self.assertEqual(control.recipients, recipients)
-    self.assertEqual(control.send_by_default, send_by_default)
 
-  def test_update_commentable(self):
-    """Test update of commentable fields"""
-    control = factories.ControlFactory()
-    self.assertEqual(control.recipients, "")
-    self.assertIs(control.send_by_default, True)
-
-    recipients = "Admin,Control Operators,Control Owners"
-    send_by_default = 0
-    self.api.put(control, {
-        "recipients": recipients,
-        "send_by_default": send_by_default,
+    response = self.api.post(all_models.ExternalComment, {
+        "external_comment": {
+            "id": 1,
+            "external_id": 1,
+            "description": "test comment",
+            "context": None
+        }
     })
-    control = db.session.query(all_models.Control).get(control.id)
-    self.assertEqual(control.recipients, recipients)
-    self.assertEqual(control.send_by_default, send_by_default)
+    self.assertEqual(response.status_code, 201)
+    comments = db.session.query(all_models.ExternalComment.description).all()
+    self.assertEqual(comments, [("test comment",)])
+
+    response = self.api.post(all_models.Relationship, {
+        "relationship": {
+            "source": {"id": 123, "type": "Control"},
+            "destination": {"id": 1, "type": "ExternalComment"},
+            "context": None,
+            "is_external": True
+        },
+    })
+    self.assertEqual(response.status_code, 201)
+    rels = all_models.Relationship.query.filter_by(
+        source_type="Control",
+        source_id=123,
+        destination_type="ExternalComment",
+        destination_id=1
+    )
+    self.assertEqual(rels.count(), 1)
+
+  def test_query_external_comment(self):
+    """Test query endpoint for ExternalComments collection."""
+    with factories.single_commit():
+      control = factories.ControlFactory()
+      comment = factories.ExternalCommentFactory(description="test comment")
+      factories.RelationshipFactory(source=control, destination=comment)
+
+    request_data = [{
+        "filters": {
+            "expression": {
+                "object_name": "Control",
+                "op": {
+                    "name": "relevant"
+                },
+                "ids": [control.id]
+            },
+        },
+        "object_name":"ExternalComment",
+        "order_by": [{"name": "created_at", "desc": "true"}]
+    }]
+    response = self.api.send_request(
+        self.api.client.post,
+        data=request_data,
+        api_link="/query"
+    )
+    self.assert200(response)
+    response_data = response.json[0]["ExternalComment"]
+    self.assertEqual(response_data["count"], 1)
+    self.assertEqual(response_data["values"][0]["description"], "test comment")
+
+  @ddt.data("created_at", "description")
+  def test_external_comments_order(self, order_by_attr):
+    """Test order of ExternalComments returned by /query."""
+    with factories.single_commit():
+      control = factories.ControlFactory()
+      for _ in range(5):
+        comment = factories.ExternalCommentFactory(description=factories.random_str())
+        factories.RelationshipFactory(source=control, destination=comment)
+
+    request_data = [{
+        "filters": {
+            "expression": {
+                "object_name": "Control",
+                "op": {
+                    "name": "relevant"
+                },
+                "ids": [control.id]
+            },
+        },
+        "object_name":"ExternalComment",
+        "order_by": [{"name": order_by_attr, "desc": "true"}]
+    }]
+    response = self.api.send_request(
+        self.api.client.post,
+        data=request_data,
+        api_link="/query"
+    )
+    self.assert200(response)
+    response_data = response.json[0]["ExternalComment"]
+    comments = [val["description"] for val in response_data["values"]]
+    expected_comments = db.session.query(
+        all_models.ExternalComment.description
+    ).order_by(
+        getattr(all_models.ExternalComment, order_by_attr).desc()
+    )
+    self.assertEqual(comments, [i[0] for i in expected_comments])
 
   def test_create_without_external_id(self):
     """Check control creation without external_id"""
