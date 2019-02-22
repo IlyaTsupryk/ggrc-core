@@ -8,7 +8,7 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import validates
 
 from ggrc import db
-from ggrc.models.comment import Commentable
+from ggrc.models import comment
 from ggrc.models.mixins.with_similarity_score import WithSimilarityScore
 from ggrc.models.object_document import PublicDocumentable
 from ggrc.models.mixins import base, categorizable
@@ -35,7 +35,7 @@ class Control(synchronizable.Synchronizable,
               PublicDocumentable,
               mixins.LastDeprecatedTimeboxed,
               mixins.TestPlanned,
-              Commentable,
+              comment.ExternalCommentable,
               WithSimilarityScore,
               base.ContextRBAC,
               mixins.BusinessObject,
@@ -134,16 +134,6 @@ class Control(synchronizable.Synchronizable,
   _sanitize_html = [
       'version',
   ]
-
-  VALID_RECIPIENTS = frozenset([
-      "Assignees",
-      "Creators",
-      "Verifiers",
-      "Admin",
-      "Control Operators",
-      "Control Owners",
-      "Other Contacts",
-  ])
 
   @classmethod
   def indexed_query(cls):

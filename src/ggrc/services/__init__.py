@@ -33,6 +33,7 @@ def contributed_services():
       service('assessments', models.Assessment, assessment.AssessmentResource),
       service('assessment_templates', models.AssessmentTemplate),
       service('comments', models.Comment),
+      service('external_comments', models.ExternalComment),
       service('custom_attribute_definitions',
               models.CustomAttributeDefinition),
       service('custom_attribute_values', models.CustomAttributeValue),

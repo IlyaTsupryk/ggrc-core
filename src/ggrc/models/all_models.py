@@ -25,7 +25,7 @@ from ggrc.models.background_operation_type import BackgroundOperationType
 from ggrc.models.background_task import BackgroundTask
 from ggrc.models.background_operation import BackgroundOperation
 from ggrc.models.calendar_event import CalendarEvent
-from ggrc.models.comment import Comment
+from ggrc.models.comment import Comment, ExternalComment
 from ggrc.models.context import Context
 from ggrc.models.control import Control
 from ggrc.models.custom_attribute_definition import CustomAttributeDefinition
@@ -115,6 +115,7 @@ all_models = [  # pylint: disable=invalid-name
     Document,
     Event,
     Evidence,
+    ExternalComment,
     Facility,
     ImportExport,
     Issue,
