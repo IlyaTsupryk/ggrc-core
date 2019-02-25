@@ -25,7 +25,11 @@ export default can.Component.extend({
       this.attr('comments').replace(comments);
     },
     buildQuery() {
-      let query = QueryAPI.buildParam('Comment', {sort: [{
+      let objectName = this.attr('instance').class.isChangeableExternally
+        ? 'ExternalComment'
+        : 'Comment';
+
+      let query = QueryAPI.buildParam(objectName, {sort: [{
         key: 'created_at',
         direction: 'desc',
       }]}, {

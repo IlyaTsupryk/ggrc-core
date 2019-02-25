@@ -4,8 +4,12 @@
  */
 
 import Component from '../comment-data-provider';
-import {getComponentVM} from '../../../../js_specs/spec_helpers';
+import {
+  getComponentVM,
+  makeFakeInstance,
+} from '../../../../js_specs/spec_helpers';
 import * as QueryAPI from '../../../plugins/utils/query-api-utils';
+import Cacheable from '../../../models/cacheable';
 
 describe('comment-data-provider component', () => {
   let viewModel;
@@ -151,5 +155,57 @@ describe('comment-data-provider component', () => {
 
       expect(viewModel.removeComment).toHaveBeenCalledWith('item');
     });
+  });
+
+  describe('buildQuery() method', () => {
+    it('should build query for Comment object', () => {
+      let instance = makeFakeInstance({model: Cacheable})({
+        type: 'type',
+        id: 'id',
+      });
+
+      viewModel.attr('instance', instance);
+
+      let result = viewModel.buildQuery();
+      expect(result).toEqual({
+        object_name: 'Comment',
+        filters: {
+          expression: {
+            object_name: 'type',
+            op: {name: 'relevant'},
+            ids: ['id'],
+          },
+        },
+        order_by: [{name: 'created_at', desc: true}],
+      });
+    });
+
+    it('should build query for ExternalComment for externally updated objects',
+      () => {
+        let instance = makeFakeInstance({
+          model: Cacheable,
+          staticProps: {
+            isChangeableExternally: true,
+          },
+        })({
+          type: 'type',
+          id: 'id',
+        });
+
+        viewModel.attr('instance', instance);
+
+        let result = viewModel.buildQuery();
+        expect(result).toEqual({
+          object_name: 'ExternalComment',
+          filters: {
+            expression: {
+              object_name: 'type',
+              op: {name: 'relevant'},
+              ids: ['id'],
+            },
+          },
+          order_by: [{name: 'created_at', desc: true}],
+        });
+      });
   });
 });
