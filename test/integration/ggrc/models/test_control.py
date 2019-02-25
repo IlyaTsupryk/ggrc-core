@@ -355,6 +355,7 @@ class TestSyncServiceControl(TestCase):
         "external_comment": {
             "id": 1,
             "external_id": 1,
+            "external_slug": factories.random_str(),
             "description": "test comment",
             "context": None
         }
@@ -416,7 +417,9 @@ class TestSyncServiceControl(TestCase):
     with factories.single_commit():
       control = factories.ControlFactory()
       for _ in range(5):
-        comment = factories.ExternalCommentFactory(description=factories.random_str())
+        comment = factories.ExternalCommentFactory(
+            description=factories.random_str()
+        )
         factories.RelationshipFactory(source=control, destination=comment)
 
     request_data = [{

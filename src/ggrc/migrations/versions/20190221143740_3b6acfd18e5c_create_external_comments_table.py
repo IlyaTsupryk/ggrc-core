@@ -20,7 +20,7 @@ from ggrc.migrations.utils import (
 )
 
 revision = '3b6acfd18e5c'
-down_revision = '54ca43587721'
+down_revision = 'da49d3baf2ec'
 
 
 def create_external_comments_table():
@@ -35,6 +35,7 @@ def create_external_comments_table():
       sa.Column('created_at', sa.DateTime(), nullable=False),
       sa.Column('updated_at', sa.DateTime(), nullable=False),
       sa.Column('modified_by_id', sa.Integer(), nullable=True),
+      sa.Column("external_slug", sa.String(250), nullable=True),
 
       sa.ForeignKeyConstraint(
           ['context_id'],
@@ -53,6 +54,12 @@ def create_external_comments_table():
       'external_comments',
       ['external_id'],
       unique=True
+  )
+
+  op.create_unique_constraint(
+      "uq_external_comments_external_slug",
+      "external_comments",
+      ["external_slug"]
   )
 
 
