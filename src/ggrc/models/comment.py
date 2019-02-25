@@ -335,7 +335,7 @@ class Comment(Roleable, Relatable, Described, Notifiable,
 
 class ExternalComment(
     synchronizable.Synchronizable,
-    Roleable,
+    synchronizable.RoleableSynchronizable,
     Relatable,
     Described,
     base.ContextRBAC,

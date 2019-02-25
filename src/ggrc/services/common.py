@@ -1085,6 +1085,11 @@ class Resource(ModelView):
         # relationships are set, so need to commit the changes
       db.session.commit()
     with benchmark("Send event job"):
+      # global_ac_roles may save a set of ACR objects in the session. If
+      # session state is changed, all ACRs will be rerequested one by one.
+      # To avoid such behavior link to ACRs objects should be removed manually.
+      if hasattr(flask.g, "global_ac_roles"):
+        del flask.g.global_ac_roles
       send_event_job(event)
 
   @staticmethod
