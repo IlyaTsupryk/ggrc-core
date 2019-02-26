@@ -412,7 +412,11 @@ class TestIssueAutomappings(TestCase):
   def setUp(self):
     super(TestIssueAutomappings, self).setUp()
 
-    snapshottable = factories.ControlFactory()
+    # TODO: replace this hack with a special test util
+    from ggrc.login import noop
+    noop.login()  # this is needed to pass the permission checks in automapper
+
+    snapshottable = factories.ObjectiveFactory()
     with factories.single_commit():
       self.audit, self.asmt, self.snapshot = self._make_audit_asmt_snapshot(
           snapshottable,

@@ -296,8 +296,8 @@ class TestIssueUnmap(TestCase):
           factories.AssessmentFactory(audit=audit) for _ in range(2)
       ]
 
-      controls = [factories.ControlFactory() for _ in range(2)]
-      snapshots = self._create_snapshots(audit, controls)
+      objectives = [factories.ObjectiveFactory() for _ in range(2)]
+      snapshots = self._create_snapshots(audit, objectives)
       self.snapshot_ids = [s.id for s in snapshots]
 
       issue = factories.IssueFactory()
