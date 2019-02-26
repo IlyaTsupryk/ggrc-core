@@ -116,16 +116,62 @@ def delete_control_comments():
 
 def update_comment_relationships():
   """Replace 'Comment' object_type with 'ExternalComment' for relationships."""
-  op.execute("""
-      UPDATE relationships
-      SET source_type = 'ExternalComment'
-      WHERE source_type = 'Comment' AND destination_type = 'Control';
-  """)
-  op.execute("""
-      UPDATE relationships
-      SET destination_type = 'ExternalComment'
-      WHERE destination_type = 'Comment' AND source_type = 'Control';
-  """)
+  connection = op.get_bind()
+  old_rels = connection.execute("""
+      SELECT id, source_type, source_id, destination_type, destination_id
+      FROM relationships
+      WHERE (source_type = 'Comment' AND destination_type = 'Control') OR
+            (destination_type = 'Comment' AND source_type = 'Control');
+    """).fetchall()
+  if old_rels:
+    migrator_id = utils.get_migration_user_id(connection)
+    for _, s_type, s_id, d_type, d_id in old_rels:
+      connection.execute(
+          sa.text("""
+              INSERT INTO relationships(
+                source_type, source_id, destination_type, destination_id,
+                modified_by_id, created_at, updated_at, is_external
+              )
+              VALUES(
+                :source_type, :source_id, :dest_type, :dest_id,
+                :modified_by_id, NOW(), NOW(), TRUE
+              );
+          """),
+          source_type='ExternalComment' if s_type == 'Comment' else s_type,
+          source_id=s_id,
+          dest_type='ExternalComment' if d_type == 'Comment' else d_type,
+          dest_id=d_id,
+          modified_by_id=migrator_id,
+      )
+
+    new_rels = connection.execute("""
+        SELECT id
+        FROM relationships
+        WHERE source_type = 'ExternalComment' OR
+              destination_type = 'ExternalComment';
+    """).fetchall()
+
+    new_rel_ids = [rel.id for rel in new_rels]
+    utils.add_to_objects_without_revisions_bulk(
+        connection,
+        new_rel_ids,
+        "Relationship",
+    )
+
+    old_rel_ids = [rel.id for rel in old_rels]
+    connection.execute(
+        sa.text("""
+            DELETE FROM relationships
+            WHERE id IN :relationship_ids;
+        """),
+        relationship_ids=old_rel_ids,
+    )
+    utils.add_to_objects_without_revisions_bulk(
+        connection,
+        old_rel_ids,
+        "Relationship",
+        action="deleted",
+    )
 
 
 def create_external_comments_revisions():
