@@ -114,7 +114,7 @@ class TaskGroupable(object):
 
   _api_attrs = reflection.ApiAttributes(
       reflection.Attribute('task_groups', create=False, update=False),
-      'task_group_objects',
+      reflection.Attribute('task_group_objects', update=False),
   )
 
   _include_links = []
