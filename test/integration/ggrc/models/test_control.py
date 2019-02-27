@@ -17,6 +17,7 @@ from ggrc.models.mixins import synchronizable
 from ggrc.utils import user_generator
 from integration.ggrc import TestCase, generator
 from integration.ggrc.models import factories
+from integration.ggrc_workflows.models import factories as wf_factories
 from integration.ggrc import api_helper
 
 
@@ -835,3 +836,30 @@ class TestSyncServiceControl(TestCase):
     self.assertEqual(response.json, expected_err)
     control = all_models.Control.query.filter_by(id=123)
     self.assertEqual(control.count(), 0)
+
+  def test_control_with_tg_update(self):
+    """Test updating of Control mapped to TaskGroup."""
+    with factories.single_commit():
+      control = factories.ControlFactory()
+      task_group = wf_factories.TaskGroupFactory()
+      wf_factories.TaskGroupObjectFactory(
+          task_group=task_group,
+          object=control
+      )
+
+    response = self.api.put(control, {
+        "title": "new title",
+        "task_group_objects": [],
+        "task_groups": [],
+    })
+    self.assert200(response)
+    control = all_models.Control.query.get(control.id)
+    self.assertEqual(control.title, "new title")
+    tg_ids = [id_[0] for id_ in db.session.query(all_models.TaskGroup.id)]
+    self.assertEqual(len(tg_ids), 1)
+    self.assertEqual([tg.id for tg in control.task_groups], tg_ids)
+    tgo_ids = [
+        id_[0] for id_ in db.session.query(all_models.TaskGroupObject.id)
+    ]
+    self.assertEqual(len(tgo_ids), 1)
+    self.assertEqual([tgo.id for tgo in control.task_group_objects], tgo_ids)
