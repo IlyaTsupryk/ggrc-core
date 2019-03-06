@@ -18,6 +18,7 @@ import inspect
 import logging
 import time
 from collections import defaultdict
+from heapq import nlargest
 
 from ggrc import settings
 
@@ -205,3 +206,24 @@ def get_benchmark():
     return DebugBenchmark
   else:
     return BenchmarkContextManager
+
+
+class BenchmarkLongestManager(object):
+  """This class allows to get top N longest operations."""
+
+  class _BenchmarkContextManager(BenchmarkContextManager):
+    def __exit__(self, exc_type, exc_value, exc_trace):
+      self.exec_time = time.time() - self.start
+
+  def __init__(self):
+    self.operations = []
+
+  def benchmark(self, message):
+    benchmark_obj = self._BenchmarkContextManager(message)
+    self.operations.append(benchmark_obj)
+    return benchmark_obj
+
+  def print_longest(self, amount):
+    key_getter = lambda obj: obj.exec_time
+    for operation in nlargest(amount, self.operations, key=key_getter):
+      logger.debug("%.4f %s", operation.exec_time, operation.message)

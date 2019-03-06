@@ -589,5 +589,8 @@ class ExportBlockConverter(BlockConverter):
     if self.ignore:
       return
     for row_converter in self.row_converters_from_ids():
-      row_converter.handle_obj_row_data()
-      yield row_converter.to_array(self.fields)
+      obj = row_converter.obj
+      with benchmark("Create handlers for object fields"):
+        row_converter.handle_obj_row_data()
+      with benchmark("Load data for {} {}".format(obj.type, obj.id)):
+        yield row_converter.to_array(self.fields)

@@ -196,12 +196,13 @@ class ExportConverter(BaseConverter):
 
     csv_string_builder = CsvStringBuilder(table_width)
     for block_converter in self.block_converters:
-      csv_header = block_converter.generate_csv_header()
-      csv_header[0].insert(0, "Object type")
-      csv_header[1].insert(0, block_converter.name)
+      with benchmark("Generate export file header"):
+        csv_header = block_converter.generate_csv_header()
+        csv_header[0].insert(0, "Object type")
+        csv_header[1].insert(0, block_converter.name)
 
-      csv_string_builder.append_line(csv_header[0])
-      csv_string_builder.append_line(csv_header[1])
+        csv_string_builder.append_line(csv_header[0])
+        csv_string_builder.append_line(csv_header[1])
 
       for line in block_converter.generate_row_data():
         line.insert(0, "")

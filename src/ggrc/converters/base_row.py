@@ -23,7 +23,7 @@ from ggrc.models.mixins import issue_tracker
 from ggrc.rbac import permissions
 from ggrc.services import signals
 from ggrc.snapshotter import create_snapshots
-from ggrc.utils import dump_attrs
+from ggrc.utils import dump_attrs, benchmarks
 
 from ggrc.models.reflection import AttributeInfo
 from ggrc.services.common import get_modified_objects
@@ -497,13 +497,16 @@ class ExportRowConverter(RowConverter):
       list of strings where each cell contains a string value of the
       corresponding field.
     """
+    benchmark_manager = benchmarks.BenchmarkLongestManager()
     row = []
     for field in fields:
-      field_type = self.headers.get(field, {}).get("type")
-      if field_type == AttributeInfo.Type.PROPERTY:
-        field_handler = self.attrs.get(field)
-      else:
-        field_handler = self.objects.get(field)
-      value = field_handler.get_value() if field_handler else ""
-      row.append(value or "")
+      with benchmark_manager.benchmark("Process '{}' field".format(field)):
+        field_type = self.headers.get(field, {}).get("type")
+        if field_type == AttributeInfo.Type.PROPERTY:
+          field_handler = self.attrs.get(field)
+        else:
+          field_handler = self.objects.get(field)
+        value = field_handler.get_value() if field_handler else ""
+        row.append(value or "")
+    benchmark_manager.print_longest(5)
     return row
