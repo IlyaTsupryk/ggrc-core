@@ -99,6 +99,7 @@ _DEFAULT_COLUMN_HANDLERS_DICT = {
     "operationally": handlers.ConclusionColumnHandler,
     "review_status": handlers.ExportOnlyColumnHandler,
     "reviewers": handlers.ReviewersColumnHandler,
+    "readonly": boolean.CheckboxColumnHandler,
     "program": handlers.ProgramColumnHandler,
     "ra_counsel": handlers.UserColumnHandler,
     "ra_manager": handlers.UserColumnHandler,

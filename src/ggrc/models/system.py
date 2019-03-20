@@ -10,6 +10,7 @@ from ggrc.fulltext.mixin import Indexed
 from ggrc.models.comment import ScopedCommentable
 from ggrc.models.deferred import deferred
 from ggrc.models import mixins
+from ggrc.models.mixins.with_readonly_access import WithReadOnlyAccess
 from ggrc.models.object_document import PublicDocumentable
 from ggrc.models.object_person import Personable
 from ggrc.models.relationship import Relatable
@@ -78,6 +79,7 @@ class SystemOrProcess(ScopedCommentable,
 
 
 class System(mixins.CustomAttributable,
+             WithReadOnlyAccess,
              Personable,
              Roleable,
              Relatable,

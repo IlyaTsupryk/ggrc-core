@@ -10,6 +10,7 @@ from ggrc.models.mixins import base
 from ggrc.models.mixins import Base
 from ggrc.models.mixins.filterable import Filterable
 from ggrc.models.mixins.synchronizable import ChangesSynchronized
+from ggrc.models.mixins.with_readonly_access import WithReadOnlyAccess
 from ggrc.models import reflection
 from ggrc.access_control import role
 from ggrc.models.types import LongJsonType
@@ -399,6 +400,22 @@ class Revision(ChangesSynchronized, Filterable, base.ContextRBAC, Base,
     elif "review_status" in result:
       result["review_status_display_name"] = result["review_status"]
 
+  def populate_readonly(self):
+    """Add readonly=False to older revisions of WithReadOnlyAccess models"""
+
+    from ggrc.models import all_models
+
+    model = getattr(all_models, self.resource_type, None)
+    if not model or not issubclass(model, WithReadOnlyAccess):
+      return dict()
+
+    if "readonly" in self._content:
+      # revision has flag "readonly", use it
+      return {"readonly": self._content["readonly"]}
+
+    # not flag "readonly" in revision, use default value False
+    return {"readonly": False}
+
   def _document_evidence_hack(self):
     """Update display_name on evideces
 
@@ -600,6 +617,7 @@ class Revision(ChangesSynchronized, Filterable, base.ContextRBAC, Base,
     populated_content.update(self.populate_categoies("assertions"))
     populated_content.update(self.populate_cad_default_values())
     populated_content.update(self.populate_cavs())
+    populated_content.update(self.populate_readonly())
 
     self.populate_requirements(populated_content)
     self.populate_options(populated_content)
