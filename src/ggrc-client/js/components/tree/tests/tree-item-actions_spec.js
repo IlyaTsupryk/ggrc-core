@@ -22,31 +22,6 @@ describe('tree-item-actions component', function () {
       spyOn(SnapshotUtils, 'isSnapshot').and.returnValue(false);
     });
     describe('returns false', () => {
-      describe('if instance type is Assessment', () => {
-        beforeEach(() => {
-          viewModel.attr('instance', {
-            type: 'Assessment',
-          });
-        });
-
-        it('and there is no audit', () => {
-          viewModel.attr('instance.audit', null);
-
-          let result = viewModel.attr('isAllowedToMap');
-
-          expect(result).toBe(false);
-        });
-
-        it('and there is audit but it is not allowed to read audit', () => {
-          viewModel.attr('instance.audit', {});
-          spyOn(Permission, 'is_allowed_for').and.returnValue(false);
-
-          let result = viewModel.attr('isAllowedToMap');
-
-          expect(result).toBe(false);
-        });
-      });
-
       it('if there is no objects to map to instance type', () => {
         spyOn(Permission, 'is_allowed_for').and.returnValue(true);
         spyOn(Mapper, 'getMappingList').and.returnValue([]);
@@ -66,23 +41,6 @@ describe('tree-item-actions component', function () {
     });
 
     describe('returns true', () => {
-      describe('if instance type is Assessment', () => {
-        beforeEach(() => {
-          viewModel.attr('instance', {
-            type: 'Assessment',
-          });
-        });
-
-        it('there is audit and it is allowed to read audit', () => {
-          viewModel.attr('instance.audit', {});
-          spyOn(Permission, 'is_allowed_for').and.returnValue(true);
-
-          let result = viewModel.attr('isAllowedToMap');
-
-          expect(result).toBe(true);
-        });
-      });
-
       it('if there are objects to map to instance type and ' +
         'user has permissions to update instance', () => {
         spyOn(Permission, 'is_allowed_for').and.returnValue(true);

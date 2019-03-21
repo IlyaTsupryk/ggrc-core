@@ -62,12 +62,6 @@ const viewModel = can.Map.extend({
       type: 'boolean',
       get() {
         let type = this.attr('instance.type');
-        let audit = this.attr('instance.audit');
-        if ((type === 'Assessment') &&
-          (!audit ||
-          !Permission.is_allowed_for('read', audit))) {
-          return false;
-        }
         let isAllowedToEdit = this.attr('isAllowedToEdit');
         let mappingTypes = Mapper.getMappingList(type);
 
