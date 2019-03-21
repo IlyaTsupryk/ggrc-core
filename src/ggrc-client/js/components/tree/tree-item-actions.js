@@ -62,7 +62,8 @@ const viewModel = can.Map.extend({
       type: 'boolean',
       get() {
         return !this.attr('denyEditAndMap')
-          && !this.attr('instance').constructor.isChangeableExternally;
+          && !this.attr('instance').constructor.isChangeableExternally
+          && !this.attr('instance.readonly');
       },
     },
     isAllowedToMap: {

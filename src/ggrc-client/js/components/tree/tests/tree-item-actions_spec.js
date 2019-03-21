@@ -118,6 +118,17 @@ describe('tree-item-actions component', function () {
         let result = viewModel.attr('isAllowedToEdit');
         expect(result).toBe(false);
       });
+
+      it('if instance is readonly', () => {
+        spyOn(Permission, 'is_allowed_for').and.returnValue(true);
+        spyOn(SnapshotUtils, 'isSnapshot').and.returnValue(false);
+        viewModel.attr('instance.type', 'Type');
+        viewModel.attr('instance.archived', false);
+        viewModel.attr('instance.readonly', true);
+
+        let result = viewModel.attr('isAllowedToEdit');
+        expect(result).toBe(false);
+      });
     });
 
     describe('returns true', () => {
@@ -126,6 +137,7 @@ describe('tree-item-actions component', function () {
         spyOn(SnapshotUtils, 'isSnapshot').and.returnValue(false);
         viewModel.attr('instance.type', 'Type');
         viewModel.attr('instance.archived', false);
+        viewModel.attr('instance.readonly', false);
 
         let result = viewModel.attr('isAllowedToEdit');
         expect(result).toBe(true);
