@@ -4,6 +4,7 @@
 }}
 
 {{#instance}}
+{{^readonly}}
   <div class="row-fluid wrap-row">
     <div data-test-id="title_reference_url_aa7d1a65">
       <related-documents instance={instance} kind="REFERENCE_URL">
@@ -23,4 +24,5 @@
       </related-documents>
     </div>
   </div>
+{{/readonly}}
 {{/instance}}
