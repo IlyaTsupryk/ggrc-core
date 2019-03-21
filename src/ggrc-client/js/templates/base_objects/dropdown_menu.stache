@@ -20,21 +20,6 @@
         {{/if}}
       {{/if}}
 
-      {{#if instance.class.is_clonable}}
-      <li>
-        <object-cloner
-          instance="instance"
-          modal-title="Clone {{ instance.type }}"
-          modal-description="Select all that you would like to clone as well?"
-
-        >
-          <a href="javascript://" can-click="cloneObject">
-            <i class="fa fa-clone"></i>
-            Clone {{ instance.type }}</a>
-        </object-cloner>
-      </li>
-      {{/if}}
-
       <li>
         {{#is_allowed 'create' 'CycleTaskGroupObjectTask' context=null}}
           {{#is_allowed_to_map_task instance.type}}
