@@ -32,6 +32,7 @@ describe('custom-roles component', () => {
         'class': {
           isProposable: true,
         },
+        readonly: false,
       };
       vm.attr('instance', instance);
 
@@ -48,6 +49,7 @@ describe('custom-roles component', () => {
         'class': {
           isProposable: false,
         },
+        readonly: false,
       };
       vm.attr('instance', instance);
 
@@ -56,6 +58,24 @@ describe('custom-roles component', () => {
 
       vm.attr('readOnly', true);
       expect(vm.attr('isReadonly')).toBe(true);
+    });
+
+    it('returns value of instance readonly prop if ' +
+      'component readOnly is FALSE and instance.class.isProposable is FALSE',
+    () => {
+      vm.attr('readOnly', );
+      let instance = {
+        'class': {
+          isProposable: false,
+        },
+        readonly: true,
+      };
+      vm.attr('instance', instance);
+
+      expect(vm.attr('isReadonly')).toBe(true);
+
+      vm.attr('instance.readonly', false);
+      expect(vm.attr('isReadonly')).toBe(false);
     });
   });
 

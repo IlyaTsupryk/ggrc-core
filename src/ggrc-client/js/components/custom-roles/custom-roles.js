@@ -23,7 +23,9 @@ export default can.Component.extend({
           }
 
           let readonly = this.attr('readOnly');
-          return instance.class.isProposable || readonly;
+          return instance.class.isProposable
+            || readonly
+            || instance.attr('readonly');
         },
       },
       redirectionEnabled: {
