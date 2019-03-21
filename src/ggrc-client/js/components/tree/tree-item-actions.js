@@ -46,7 +46,7 @@ const viewModel = can.Map.extend({
         return isSnapshot(this.attr('instance'));
       },
     },
-    isAllowedToEdit: {
+    denyEditAndMap: {
       type: 'boolean',
       get() {
         let instance = this.attr('instance');
@@ -54,18 +54,25 @@ const viewModel = can.Map.extend({
         let isSnapshot = this.attr('isSnapshot');
         let isArchived = instance.attr('archived');
         let isInForbiddenList = forbiddenEditList.indexOf(type) > -1;
-        return Permission.is_allowed_for('update', instance) &&
-          !(isSnapshot || isInForbiddenList || isArchived);
+        return !Permission.is_allowed_for('update', instance) ||
+          (isSnapshot || isInForbiddenList || isArchived);
+      },
+    },
+    isAllowedToEdit: {
+      type: 'boolean',
+      get() {
+        return !this.attr('denyEditAndMap')
+          && !this.attr('instance').constructor.isChangeableExternally;
       },
     },
     isAllowedToMap: {
       type: 'boolean',
       get() {
         let type = this.attr('instance.type');
-        let isAllowedToEdit = this.attr('isAllowedToEdit');
+        let denyEditAndMap = this.attr('denyEditAndMap');
         let mappingTypes = Mapper.getMappingList(type);
 
-        return isAllowedToEdit && !!mappingTypes.length;
+        return !denyEditAndMap && !!mappingTypes.length;
       },
     },
   },

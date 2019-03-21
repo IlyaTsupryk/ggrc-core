@@ -4,10 +4,14 @@
 */
 
 import Component from '../tree-item-actions';
-import {getComponentVM} from '../../../../js_specs/spec_helpers';
+import {
+  getComponentVM,
+  makeFakeInstance,
+} from '../../../../js_specs/spec_helpers';
 import Permission from '../../../permission';
 import * as SnapshotUtils from '../../../plugins/utils/snapshot-utils';
 import Mapper from '../../../models/mappers/mappings';
+import Cacheable from '../../../models/cacheable';
 
 describe('tree-item-actions component', function () {
   let viewModel;
@@ -91,6 +95,25 @@ describe('tree-item-actions component', function () {
         spyOn(SnapshotUtils, 'isSnapshot').and.returnValue(false);
         viewModel.attr('instance.type', 'Type');
         viewModel.attr('instance.archived', false);
+
+        let result = viewModel.attr('isAllowedToEdit');
+        expect(result).toBe(false);
+      });
+
+      it('if object is changeable externally', () => {
+        spyOn(Permission, 'is_allowed_for').and.returnValue(true);
+        spyOn(SnapshotUtils, 'isSnapshot').and.returnValue(false);
+
+        let instance = makeFakeInstance({
+          model: Cacheable,
+          staticProps: {
+            isChangeableExternally: true,
+          },
+        })({
+          archived: false,
+        });
+
+        viewModel.attr('instance', instance);
 
         let result = viewModel.attr('isAllowedToEdit');
         expect(result).toBe(false);
