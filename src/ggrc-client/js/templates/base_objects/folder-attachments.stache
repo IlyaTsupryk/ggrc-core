@@ -4,10 +4,12 @@
 }}
 
 {{#instance}}
+{{^readonly}}
   <div class="row-fluid wrap-row">
     <folder-attachments-list {title}="'Attachment'"
                           {instance}="instance"
                           {is-snapshot}="isSnapshot">
     </folder-attachments-list>
   </div>
+{{/readonly}}
 {{/instance}}
