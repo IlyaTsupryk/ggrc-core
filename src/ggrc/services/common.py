@@ -27,7 +27,13 @@ import sqlalchemy.orm.exc
 from sqlalchemy.orm import load_only
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
-from werkzeug.exceptions import BadRequest, Forbidden, HTTPException, NotFound
+from werkzeug.exceptions import (
+    BadRequest,
+    Forbidden,
+    HTTPException,
+    NotFound,
+    MethodNotAllowed,
+)
 
 import ggrc.builder.json
 import ggrc.models
@@ -40,6 +46,7 @@ from ggrc.fulltext import get_indexer
 from ggrc.login import get_current_user_id, get_current_user
 from ggrc.models.cache import Cache
 from ggrc.models.exceptions import ValidationError, translate_message
+from ggrc.models.mixins.with_readonly_access import WithReadOnlyAccess
 from ggrc.rbac import permissions
 from ggrc.services.attribute_query import AttributeQueryBuilder
 from ggrc.services import signals
@@ -579,6 +586,17 @@ class Resource(ModelView):
             not permissions.has_conditions('update', self.model.__name__)):
       raise Forbidden()
 
+  @staticmethod
+  def _validate_readonly_access(obj):
+    """Return 405 MethodNotAllowed if object is marked as read-only"""
+
+    if not isinstance(obj, WithReadOnlyAccess):
+      return
+
+    if obj.readonly:
+      raise MethodNotAllowed(
+          "The object is in a read-only mode and is dedicated for SOX needs")
+
   @utils.validate_mimetype("application/json")
   def put(self, id):  # pylint: disable=redefined-builtin
     """PUT operation handler."""
@@ -604,6 +622,11 @@ class Resource(ModelView):
     with benchmark("Query update permissions"):
       new_context = self.get_context_id_from_json(src)
       self._check_put_permissions(obj, new_context)
+
+    # check read-only access AFTER check for permissions to disallow
+    # user obtain value for flag "readonly"
+    self._validate_readonly_access(obj)
+
     with benchmark("Deserialize object"):
       self.json_update(obj, src)
 
@@ -702,6 +725,11 @@ class Resource(ModelView):
     header_error = self.validate_headers_for_put_or_delete(obj)
     if header_error:
       return header_error
+
+    # check read-only access AFTER check for permissions to disallow
+    # user obtain value for flag "readonly"
+    self._validate_readonly_access(obj)
+
     db.session.delete(obj)
     with benchmark("Send DELETEd event"):
       signals.Restful.model_deleted.send(

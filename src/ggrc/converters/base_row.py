@@ -21,6 +21,7 @@ from ggrc.models import cache
 from ggrc.models.exceptions import StatusValidationError
 from ggrc.models.mixins import issue_tracker
 from ggrc.models.mixins import synchronizable
+from ggrc.models.mixins.with_readonly_access import WithReadOnlyAccess
 from ggrc.rbac import permissions
 from ggrc.services import signals
 from ggrc.snapshotter import create_snapshots
@@ -198,6 +199,14 @@ class ImportRowConverter(RowConverter):
     obj.modified_by_id = get_current_user_id()
     return obj
 
+  def _has_readonly_access(self, obj):
+    """Return True if new obj has type WithReadOnlyAccess and readonly=True"""
+
+    if self.is_new or not isinstance(obj, WithReadOnlyAccess):
+      return False
+
+    return obj.readonly
+
   def get_object_by_key(self, key="slug"):
     """ Get object if the slug is in the system or return a new object """
     value = self.get_value(key)
@@ -205,6 +214,7 @@ class ImportRowConverter(RowConverter):
 
     if value:
       obj = self.find_by_key(key, value)
+
     if not value or not obj:
       # We assume that 'get_importables()' returned value contains
       # names of the objects that cannot be created via import but
@@ -216,6 +226,9 @@ class ImportRowConverter(RowConverter):
     elif not permissions.is_allowed_update_for(obj):
       self.ignore = True
       self.add_error(errors.PERMISSION_ERROR)
+    elif self._has_readonly_access(obj):
+      self.add_error(errors.READONLY_ACCESS_ERROR)
+
     self.initial_state = dump_attrs(obj)
     return obj
 

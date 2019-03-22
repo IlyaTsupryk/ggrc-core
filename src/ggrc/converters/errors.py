@@ -205,3 +205,7 @@ UNEXPECTED_ERROR = u"Unexpected error on import."
 
 EXTERNAL_MODEL_IMPORT_RESTRICTION = (u"Line {line}: Trying to import external "
                                      u"model entry.")
+
+READONLY_ACCESS_ERROR = (u"Line {line}: The system is in a read-only mode and "
+                         u"is dedicated for SOX needs. "
+                         u"The line will be ignored.")
