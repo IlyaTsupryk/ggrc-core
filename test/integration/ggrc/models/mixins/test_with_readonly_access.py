@@ -6,12 +6,14 @@
 # pylint: disable=invalid-name
 
 from collections import OrderedDict
+import json
 
 import ddt
 
 from ggrc.converters import errors
-from ggrc.models import get_model, all_models
+from ggrc.models import get_model, all_models, mixins
 from integration.ggrc import TestCase
+from integration.ggrc import api_helper
 from integration.ggrc.generator import ObjectGenerator
 from integration.ggrc import factories
 from integration.ggrc_basic_permissions.models \
@@ -399,3 +401,100 @@ class TestWithReadOnlyAccessImport(TestCase):
     })
     obj = get_model("System").query.get(obj_id)
     self.assertIsNotNone(obj)
+
+
+@ddt.ddt
+class TestWithReadOnlyAccessFolder(TestCase):
+  """Test for "unmap_objects" view."""
+
+  NOT_PRESENT = object()
+  PATH_ADD_FOLDER = '/api/add_folder'
+  PATH_REMOVE_FOLDER = '/api/remove_folder'
+
+  FOLDERABLE_MODEL_NAMES = list(m.__name__ for m in all_models.all_models
+                                if issubclass(m, mixins.Folderable) and
+                                m not in (all_models.Directive,
+                                          all_models.SystemOrProcess))
+
+  def setUp(self):
+    """setUp"""
+    super(TestWithReadOnlyAccessFolder, self).setUp()
+    self.api = api_helper.Api()
+
+  def _get_request_data(self, obj_type=NOT_PRESENT, obj_id=NOT_PRESENT,
+                        folder=NOT_PRESENT):
+    """Prepare request dict"""
+    dct = dict()
+
+    if obj_type is not self.NOT_PRESENT:
+      dct['object_type'] = obj_type
+
+    if obj_id is not self.NOT_PRESENT:
+      dct['object_id'] = obj_id
+
+    if folder is not self.NOT_PRESENT:
+      dct['folder'] = folder
+
+    return json.dumps(dct)
+
+  @ddt.data(
+      ('System', 'Creator', 403),
+      ('System', 'Reader', 403),
+      ('System', 'Editor', 405),
+      ('System', 'Administrator', 405),
+  )
+  @ddt.unpack
+  def test_readonly_add_folder_with_global_role(self, obj_type, role_name,
+                                                expected_status):
+    """Test add_folder read-only {0} by user with global role {1}"""
+
+    role_obj = all_models.Role.query.filter(
+        all_models.Role.name == role_name).one()
+
+    factory = factories.get_model_factory(obj_type)
+    with factories.single_commit():
+      obj_id = factory(folder="a", readonly=True).id
+      person = factories.PersonFactory()
+      rbac_factories.UserRoleFactory(role=role_obj, person=person)
+      person_id = person.id
+
+    self.api.set_user(all_models.Person.query.get(person_id))
+
+    response = self.api.client.post(
+        self.PATH_ADD_FOLDER, content_type="application/json",
+        data=self._get_request_data(obj_type, obj_id, folder="b"))
+
+    self.assertStatus(response, expected_status)
+    obj = get_model(obj_type).query.get(obj_id)
+    self.assertEqual(obj.folder, "a")
+
+  @ddt.data(
+      ('System', 'Creator', 403),
+      ('System', 'Reader', 403),
+      ('System', 'Editor', 405),
+      ('System', 'Administrator', 405),
+  )
+  @ddt.unpack
+  def test_readonly_remove_folder_with_global_role(self, obj_type, role_name,
+                                                   expected_status):
+    """Test remove_folder read-only {0} by user with global role {1}"""
+
+    role_obj = all_models.Role.query.filter(
+        all_models.Role.name == role_name).one()
+
+    factory = factories.get_model_factory(obj_type)
+    with factories.single_commit():
+      obj_id = factory(folder="a", readonly=True).id
+      person = factories.PersonFactory()
+      rbac_factories.UserRoleFactory(role=role_obj, person=person)
+      person_id = person.id
+
+    self.api.set_user(all_models.Person.query.get(person_id))
+
+    response = self.api.client.post(
+        self.PATH_REMOVE_FOLDER, content_type="application/json",
+        data=self._get_request_data(obj_type, obj_id, folder="a"))
+
+    self.assertStatus(response, expected_status)
+    obj = get_model(obj_type).query.get(obj_id)
+    self.assertEqual(obj.folder, "a")
