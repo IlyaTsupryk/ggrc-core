@@ -80,7 +80,7 @@ class Generator(object):
     obj_class = obj.__class__
     response = self.api.put(obj, data)
     response_obj = None
-    if response.json:
+    if response.status_code == 200 and response.json:
       response_obj = obj_class.query.get(response.json[obj_name]['id'])
     return response, response_obj
 

@@ -12,6 +12,7 @@ from ggrc import utils
 from ggrc import db
 from ggrc.models import inflector
 from ggrc.models import mixins
+from ggrc.models.mixins.with_readonly_access import WithReadOnlyAccess
 from ggrc.rbac import permissions
 from ggrc.utils.log_event import log_event
 
@@ -114,6 +115,7 @@ class AddRemoveFolderView(flask.views.MethodView):
           "{} with id {} not found".format(model.__name__, object_id))
 
     self._ensure_has_permissions(obj)
+    self._validate_readonly_access(obj)
 
     return obj
 
@@ -133,6 +135,17 @@ class AddRemoveFolderView(flask.views.MethodView):
       return
 
     raise exceptions.Forbidden()
+
+  @staticmethod
+  def _validate_readonly_access(obj):
+    """Return 405 MethodNotAllowed if object is marked as read-only"""
+
+    if not isinstance(obj, WithReadOnlyAccess):
+      return
+
+    if obj.readonly:
+      raise exceptions.MethodNotAllowed(
+          "The object is in a read-only mode and is dedicated for SOX needs")
 
 
 def init_folder_views(app):
