@@ -51,6 +51,11 @@
               <span class="state-value state-archived">Archived</span>
             </span>
           {{/if_helpers}}
+          {{#if readonly}}
+            <span class="pane-header__title-item">
+              <span class="state-value state-readonly">Read Mode</span>
+            </span>
+          {{/if}}
           {{#if showProposalButton}}
             <span class="pane-header__title-item proposal">
                 <a href="javascript://"
