@@ -1,0 +1,13 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#instance}}
+  <div class="row-fluid wrap-row">
+    <folder-attachments-list {title}="'Attachment'"
+                          {instance}="instance"
+                          {is-snapshot}="isSnapshot">
+    </folder-attachments-list>
+  </div>
+{{/instance}}

@@ -35,12 +35,7 @@
               </div>
 
               {{> /static/templates/base_objects/reference-urls.stache}}
-
-              <div class="row-fluid wrap-row">
-                <folder-attachments-list {title}="'Attachment'"
-                                      {instance}="instance">
-                </folder-attachments-list>
-              </div>
+              {{> /static/templates/base_objects/folder-attachments.stache}}
 
               <div class="custom-attr-wrap info-pane__section">
                 <div class="row-fluid">
