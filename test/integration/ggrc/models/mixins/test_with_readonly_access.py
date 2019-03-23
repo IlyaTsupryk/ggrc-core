@@ -10,6 +10,7 @@ import json
 
 import ddt
 
+from ggrc import views
 from ggrc.converters import errors
 from ggrc.models import get_model, all_models, mixins
 from integration.ggrc import TestCase
@@ -498,3 +499,56 @@ class TestWithReadOnlyAccessFolder(TestCase):
     self.assertStatus(response, expected_status)
     obj = get_model(obj_type).query.get(obj_id)
     self.assertEqual(obj.folder, "a")
+
+
+@ddt.ddt
+class TestWithReadOnlyAccessExport(TestCase):
+  """Test for exporting objects with read-only access."""
+
+  def setUp(self):
+    """setUp"""
+    super(TestWithReadOnlyAccessExport, self).setUp()
+    self.api = api_helper.Api()
+
+  @ddt.data(
+      'Creator', 'Reader', 'Editor', 'Administrator'
+  )
+  def test_export_system(self, role_name):
+    """Test exporting of System objects."""
+    role_obj = all_models.Role.query.filter(
+        all_models.Role.name == role_name
+    ).one()
+
+    with factories.single_commit():
+      system = factories.SystemFactory()
+      user = factories.PersonFactory()
+      rbac_factories.UserRoleFactory(role=role_obj, person=user)
+      system.add_person_with_role_name(user, "Admin")
+
+    self.api.set_user(user)
+
+    search_request = [{
+        "object_name": "System",
+        "fields": "all",
+        "filters": {
+            "expression": {}
+        }
+    }]
+
+    response = self.export_parsed_csv(search_request, self.api.user_headers)
+    self.assertEqual(len(response["System"]), 1)
+    self.assertNotIn("Read-only", response["System"][0])
+
+  def test_export_system_template(self):
+    """Test exporting of System import template."""
+    self.client.get("/login")
+    response = self.export_csv_template([{"object_name": "System"}])
+    self.assertNotIn("Read-only", response.data)
+    self.assertNotIn("readonly", response.data)
+
+  def test_export_system_attributes(self):
+    """Test that Read-only flag is not show on export page."""
+    export_attributes = views.get_all_attributes_json()
+    self.assertNotIn("Read-only", export_attributes)
+    self.assertNotIn("readonly", export_attributes)
+    self.assertNotIn("hidden", export_attributes)
