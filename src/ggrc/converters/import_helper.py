@@ -21,7 +21,8 @@ from ggrc.converters.handlers import handlers
 logger = logging.getLogger(__name__)
 
 
-def get_object_column_definitions(object_class, fields=None):
+def get_object_column_definitions(object_class, fields=None,
+                                  include_hidden=False):
   """Attach additional info to attribute definitions.
 
   Fetches the attribute info (_aliases) for the given object class and adds
@@ -31,12 +32,18 @@ def get_object_column_definitions(object_class, fields=None):
   Args:
     object_class (db.Model): Model for which we want to get column definitions
       for imports.
+    include_hidden (bool): Flag which specifies if we should include column
+      handlers for hidden attributes (they marked as 'hidden'
+      in _aliases dict).
 
   Returns:
     dict: Updated attribute definitions dict with additional data.
   """
-  attributes = AttributeInfo.get_object_attr_definitions(object_class,
-                                                         fields=fields)
+  attributes = AttributeInfo.get_object_attr_definitions(
+      object_class,
+      fields=fields,
+      include_hidden=include_hidden
+  )
   column_handlers = model_column_handlers(object_class)
   for key, attr in attributes.iteritems():
     handler_key = attr.get("handler_key", key)

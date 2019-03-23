@@ -24,5 +24,6 @@ class WithReadOnlyAccess(object):
       "readonly": {
           "display_name": "Read-only",
           "mandatory": False,
+          "hidden": True,
       },
   }

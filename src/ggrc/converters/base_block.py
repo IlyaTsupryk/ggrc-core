@@ -95,20 +95,13 @@ class BlockConverter(object):
     self.row_converters = []
     self.ignore = False
     self._has_non_importable_columns = False
+    self.object_headers = {}
+    self.headers = {}
     # For import contains model name from csv file.
     # For export contains 'Model.__name__' value.
     self.class_name = class_name
     # TODO: remove 'if' statement. Init should initialize only.
     if self.object_class:
-      names = {n.strip().strip("*").lower() for n in raw_headers or []} or None
-      self.object_headers = get_object_column_definitions(self.object_class,
-                                                          names)
-      if not raw_headers:
-        all_header_names = [unicode(key)
-                            for key in self._get_header_names().keys()]
-        raw_headers = all_header_names
-      self.check_for_duplicate_columns(raw_headers)
-      self.headers = self.clean_headers(raw_headers)
       self.table_singular = self.object_class._inflector.table_singular
       self.name = self.object_class._inflector.human_singular.title()
     else:
@@ -287,7 +280,7 @@ class BlockConverter(object):
     rows data.
 
     Args:
-      raw_headers (list of str): unmodified header row from csv file
+      raw_headers (list of unicode): unmodified header row from csv file
 
     Returns:
       Ordered Dictionary containing all valid headers
@@ -362,6 +355,14 @@ class ImportBlockConverter(BlockConverter):
         class_name=class_name,
         operation="import"
     )
+    names = {n.strip().strip("*").lower() for n in raw_headers or []} or None
+    self.object_headers = get_object_column_definitions(
+        self.object_class,
+        names,
+        include_hidden=True,
+    )
+    self.check_for_duplicate_columns(raw_headers)
+    self.headers = self.clean_headers(raw_headers)
     self.csv_lines = csv_lines
     self.converter = converter
     self.unique_values = self.get_unique_values_dict(self.object_class)
@@ -537,6 +538,9 @@ class ExportBlockConverter(BlockConverter):
         class_name=class_name,
         operation="export"
     )
+    self.object_headers = get_object_column_definitions(self.object_class)
+    raw_headers = [unicode(key) for key in self._get_header_names().keys()]
+    self.headers = self.clean_headers(raw_headers)
     self.organize_fields(fields)
 
   @property
