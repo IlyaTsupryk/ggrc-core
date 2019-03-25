@@ -4,6 +4,7 @@
 
 from logging import getLogger
 
+from ggrc import rbac, login
 from ggrc.converters import errors
 from ggrc.converters.handlers import handlers
 
@@ -80,6 +81,27 @@ class CheckboxColumnHandler(handlers.ColumnHandler):
       logger.exception(
           "Import failed with setattr(%r, %r, %r)",
           self.row_converter.obj, self.key, self.value
+      )
+
+
+class AdminCheckboxColumnHandler(CheckboxColumnHandler):
+  """Checkbox handler.
+
+  This handles all possible boolean values that are in the database None, True
+  and False. Only global Admin can setup such value.
+  """
+
+  def set_obj_attr(self):
+    """Handle set object for boolean values by global Admin."""
+    user = login.get_current_user(use_external_user=False)
+    role = getattr(user, 'system_wide_role', None)
+    if role in rbac.SystemWideRoles.admins:
+      super(AdminCheckboxColumnHandler, self).set_obj_attr()
+    else:
+      self.add_warning(
+          errors.NON_ADMIN_ACCESS_ERROR,
+          object_type=self.row_converter.obj.type,
+          column_name=self.display_name,
       )
 
 

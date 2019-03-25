@@ -209,3 +209,8 @@ EXTERNAL_MODEL_IMPORT_RESTRICTION = (u"Line {line}: Trying to import external "
 READONLY_ACCESS_ERROR = (u"Line {line}: The system is in a read-only mode and "
                          u"is dedicated for SOX needs. "
                          u"The line will be ignored.")
+
+NON_ADMIN_ACCESS_ERROR = (u"Line {line}: You don't have permissions to make "
+                          u"the {object_type} read-only. Please contact your "
+                          u"administrator if you have any questions. "
+                          u"Column '{column_name}' will be ignored.")
