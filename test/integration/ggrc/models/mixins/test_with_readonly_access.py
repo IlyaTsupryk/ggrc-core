@@ -167,6 +167,7 @@ class TestWithReadOnlyAccessImport(TestCase):
 
   def setUp(self):
     super(TestWithReadOnlyAccessImport, self).setUp()
+    self.api = api_helper.Api()
     self.client.get("/login")
 
   @ddt.data(
@@ -402,6 +403,39 @@ class TestWithReadOnlyAccessImport(TestCase):
     })
     obj = get_model("System").query.get(obj_id)
     self.assertIsNotNone(obj)
+
+  @ddt.data(
+      ("Creator", False),
+      ("Reader", False),
+      ("Editor", False),
+      ("Administrator", True),
+  )
+  @ddt.unpack
+  def test_readonly_set_by_role(self, role_name, expected_readonly):
+    """Test setting Read-only to true under {}."""
+    role_obj = all_models.Role.query.filter(
+        all_models.Role.name == role_name
+    ).one()
+
+    with factories.single_commit():
+      user = factories.PersonFactory()
+      rbac_factories.UserRoleFactory(role=role_obj, person=user)
+
+    self.api.set_user(user)
+
+    response = self.import_data(OrderedDict([
+        ("object_type", "System"),
+        ("Code*", "System-1"),
+        ("Admin", user.email),
+        ("Assignee", user.email),
+        ("Verifier", user.email),
+        ("Title", "New System"),
+        ("Read-only", True),
+    ]), headers=self.api.user_headers)
+    self._check_csv_response(response, {})
+
+    obj = all_models.System.query.filter_by(slug="System-1").first()
+    self.assertEqual(obj.readonly, expected_readonly)
 
 
 @ddt.ddt

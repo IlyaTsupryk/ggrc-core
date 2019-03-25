@@ -290,6 +290,7 @@ class TestCase(BaseTestCase, object):
     """
     dry_run = kwargs.get("dry_run", False)
     person = kwargs.get("person")
+    headers = kwargs.get("headers")
     with tempfile.NamedTemporaryFile(dir=cls.CSV_DIR, suffix=".csv") as tmp:
       writer = csv.writer(tmp)
       object_type = None
@@ -305,7 +306,12 @@ class TestCase(BaseTestCase, object):
           writer.writerow([data_object_type] + keys)
         writer.writerow([""] + [data[k] for k in keys])
       tmp.seek(0)
-      return cls._import_file(os.path.basename(tmp.name), dry_run, person)
+      return cls._import_file(
+          os.path.basename(tmp.name),
+          dry_run,
+          person,
+          headers=headers
+      )
 
   @classmethod
   def init_taskqueue(cls):
@@ -327,13 +333,14 @@ class TestCase(BaseTestCase, object):
       cls.testbed.deactivate()
 
   @classmethod
-  def send_import_request(cls, data, dry_run=False, person=None):
+  def send_import_request(cls, data, dry_run=False, person=None, headers=None):
     """Sending import post request."""
     cls.init_taskqueue()
-    headers = {
+    headers = headers or {}
+    headers.update({
         "X-test-only": "true" if dry_run else "false",
         "X-requested-by": "GGRC",
-    }
+    })
     api = Api()
     api.set_user(person)  # Ok if person is None
     response = api.client.post("/_service/import_csv",
@@ -343,13 +350,18 @@ class TestCase(BaseTestCase, object):
   @classmethod
   @patch("ggrc.gdrive.file_actions.get_gdrive_file",
          new=read_imported_file)
-  def _import_file(cls, filename, dry_run=False, person=None):
+  def _import_file(cls, filename, dry_run=False, person=None, headers=None):
     """Function that handle sending file to import_csv service"""
     data = {"file": (open(os.path.join(cls.CSV_DIR, filename)), filename)}
-    response = cls.send_import_request(data, dry_run=dry_run, person=person)
+    response = cls.send_import_request(
+        data,
+        dry_run=dry_run,
+        person=person,
+        headers=headers,
+    )
     return response
 
-  def import_file(self, filename, person=None, safe=True):
+  def import_file(self, filename, person=None, safe=True, headers=None):
     """Import a csv file as a specific user.
 
     Args:
@@ -361,8 +373,13 @@ class TestCase(BaseTestCase, object):
     Returns:
       import response dict.
     """
-    response_dry = self._import_file(filename, dry_run=True, person=person)
-    response = self._import_file(filename, person=person)
+    response_dry = self._import_file(
+        filename,
+        dry_run=True,
+        person=person,
+        headers=headers,
+    )
+    response = self._import_file(filename, person=person, headers=headers)
     self.assertEqual(response_dry, response)
     if safe:
       self._check_csv_response(response, {})
