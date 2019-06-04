@@ -81,7 +81,6 @@ permissions = {
         "CycleTaskGroup",
         "CycleTaskGroupObjectTask",
         "NotificationConfig",
-        "PersonProfile",
     ],
     "create": [
         "AccountBalance",

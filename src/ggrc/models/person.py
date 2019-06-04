@@ -6,7 +6,7 @@
 import re
 from sqlalchemy.orm import validates
 
-from ggrc import builder
+from ggrc import builder, login
 from ggrc import db
 from ggrc import settings
 from ggrc.fulltext.mixin import Indexed
@@ -38,6 +38,11 @@ class Person(CustomAttributable, CustomAttributeMapable, HasOwnContext,
         name='Personal Context',
         description=''
     )
+
+    cur_user = login.get_current_user()
+    if cur_user and not cur_user.is_anonymous():
+      self.profile.add_person_with_role_name(cur_user, "Admin")
+    self.profile.add_person_with_role_name(self, "Admin")
 
   __tablename__ = 'people'
 

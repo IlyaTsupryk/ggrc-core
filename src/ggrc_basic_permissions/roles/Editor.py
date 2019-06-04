@@ -69,7 +69,6 @@ permissions = {
         "Context",
         "UserRole",
         "NotificationConfig",
-        "PersonProfile",
     ],
     "create": [
         "AccountBalance",

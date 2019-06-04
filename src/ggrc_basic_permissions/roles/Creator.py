@@ -41,7 +41,6 @@ owner_read = owner_base + [
     "UserRole",
     "Context",
     "Person",
-    "PersonProfile",
     "Label",
     "ObjectLabel",
 ]
