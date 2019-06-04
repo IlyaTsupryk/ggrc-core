@@ -22,6 +22,8 @@ from ggrc_basic_permissions.models import UserRole
 from integration.ggrc.services import TestCase
 from integration.ggrc.models import factories
 
+from integration.ggrc.api_helper import Api
+
 
 @ddt.ddt
 class TestUserGenerator(TestCase):
@@ -31,6 +33,7 @@ class TestUserGenerator(TestCase):
     super(TestUserGenerator, self).setUp()
     self.clear_data()
     self.client.get("/login")
+    self.api = Api()
 
   def _post(self, data):
     return self.client.post(
@@ -148,8 +151,42 @@ class TestUserGenerator(TestCase):
 
     # checks person profile was created successfully
     emails = ['aturing@example.com', ]
+    cur_user = Person.query.filter_by(email='user@example.com').one()
+    acp_person_ids = [user.id, cur_user.id]
+
     self.assert_person_profile_created(emails)
     self.assert_profiles_restrictions()
+    self.assert_acp_created(acp_person_ids)
+
+  @mock.patch('ggrc.settings.INTEGRATION_SERVICE_URL', new='endpoint')
+  @mock.patch('ggrc.settings.AUTHORIZED_DOMAIN', new='example.com')
+  @freeze_time("2018-05-21 10:26:34")
+  def test_people_profiles_api(self):
+    """Test people_profiles api after person creation."""
+    with mock.patch.multiple(
+        PersonClient,
+        _post=self._mock_post
+    ):
+      data = json.dumps([{'person': {
+          'name': 'Alan Turing',
+          'email': 'aturing@example.com',
+          'context': None
+      }}])
+      response = self._post(data)
+      self.assertStatus(response, 200)
+
+    api_response = self.api.client.get("/api/people_profiles")
+
+    cur_user = Person.query.filter_by(email='user@example.com').one()
+    user = Person.query.filter_by(email='aturing@example.com').one()
+    acp_person_ids = [user.id, cur_user.id]
+    response_ids = list(
+        [
+            pepson_profile['id'] for pepson_profile in
+            api_response.json['people_profiles_collection']['people_profiles']
+        ]
+    )
+    self.assertItemsEqual(acp_person_ids, response_ids)
 
   @mock.patch('ggrc.settings.INTEGRATION_SERVICE_URL', new='endpoint')
   @mock.patch('ggrc.settings.AUTHORIZED_DOMAIN', new='example.com')

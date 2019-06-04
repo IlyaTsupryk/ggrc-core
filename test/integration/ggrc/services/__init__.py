@@ -122,6 +122,12 @@ class TestCase(BaseTestCase):
     ggrc.db.session.commit()
     return mock
 
+  def assert_acp_created(self, acp_person_ids):
+    ac_people = all_models.AccessControlPerson.query.filter(
+        all_models.AccessControlPerson.person_id.in_((acp_person_ids))
+    ).all()
+    self.assertEqual(len(ac_people), len(acp_person_ids))
+
   def assert_person_profile_created(self, emails):
     """Checks profile was created successfully for listed users"""
     for email in emails:

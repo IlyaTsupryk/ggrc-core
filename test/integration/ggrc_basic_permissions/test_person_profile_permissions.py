@@ -41,25 +41,22 @@ class TestPersonProfilePermissions(TestCase):
   def test_permissions(self, name):
     """Test permissions for user roles."""
     user = all_models.Person.query.get(self.users[name].id)
-    profile = all_models.PersonProfile.query.join(
-        all_models.PersonProfile.person
-    ).filter_by(
-        email=user.email
-    ).one()
+    profile_id = user.profile.id
+
     self.api.set_user(self.users[name])
-    response = self.api.get(all_models.PersonProfile, profile.id)
+    response = self.api.get(all_models.PersonProfile, profile_id)
     self.assert200(response)
 
     new_date = "2018-05-20 22:05:17"
-    response = self.api.put(profile, {
+    response = self.api.put(user.profile, {
         "people_profiles": {
-            "id": profile.id,
+            "id": profile_id,
             "last_seen_whats_new": new_date,
         },
     })
     self.assert200(response)
 
-    response = self.api.delete(profile)
+    response = self.api.delete(user.profile, profile_id)
     if name == "admin":
       self.assert200(response)
     else:
